@@ -1,0 +1,198 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { ListeningSummaryQuestion } from '../types/question';
+
+/**
+ * Self-crafted authentic listening passages for Area 4 Practice.
+ * Length target: 90~120 words, ~40-50 seconds reading time at natural speaking rate (0.9x TTS).
+ * IMPORTANT: Passage text must NEVER be shown to the candidate during listening or recording.
+ */
+export const LISTENING_PASSAGES: ListeningSummaryQuestion[] = [
+  {
+    id: 'listen-wp-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'workplace',
+    difficulty: 'basic',
+    practiceMode: 'listening-summary',
+    title: 'New Hybrid Work Policy Announcement',
+    passage:
+      'Good morning, team. Beginning next month, our department will implement a new hybrid working policy. All employees are expected to work in the office on Tuesdays and Thursdays for collaborative meetings and team brainstorming sessions. On Mondays, Wednesdays, and Fridays, you may choose to work remotely from home. Core collaboration hours will remain ten in the morning to four in the afternoon. Please submit your preferred workstation schedule to your manager by next Friday afternoon. Thank you for your cooperation as we transition smoothly.',
+    passageWordCount: 88,
+    estimatedListeningSeconds: 43,
+    playbackLimit: 2,
+    keyPoints: [
+      'New hybrid policy starts next month',
+      'In-office work required on Tuesdays and Thursdays for meetings',
+      'Remote work allowed on Mondays, Wednesdays, and Fridays',
+      'Schedule must be submitted to managers by next Friday',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'work',
+    categoryLabel: '직장생활',
+  },
+  {
+    id: 'listen-wp-02',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'workplace',
+    difficulty: 'intermediate',
+    practiceMode: 'listening-summary',
+    title: 'ERP System Upgrade and Downtime',
+    passage:
+      'Attention all project managers. This weekend, our IT infrastructure team will perform a major upgrade on the enterprise resource planning system. Maintenance will begin on Saturday at eight in the evening and conclude by Sunday noon. During this sixteen-hour maintenance window, all inventory tracking, purchase request submissions, and financial reporting modules will be completely offline. Please complete and submit all urgent client invoices before Friday five p.m. If you encounter any critical system issues on Monday morning, contact the emergency IT help desk immediately.',
+    passageWordCount: 86,
+    estimatedListeningSeconds: 44,
+    playbackLimit: 2,
+    keyPoints: [
+      'ERP system maintenance from Saturday 8 PM to Sunday noon',
+      'System will be completely offline for 16 hours during upgrade',
+      'Urgent client invoices must be submitted before Friday 5 PM',
+      'Emergency help desk is available for Monday morning issues',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'work',
+    categoryLabel: '직장생활',
+  },
+  {
+    id: 'listen-dl-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'daily-life',
+    difficulty: 'basic',
+    practiceMode: 'listening-summary',
+    title: 'Metro Line Maintenance Notice',
+    passage:
+      'Attention passengers on the Central Line. Due to scheduled track maintenance and signal modernization, train service between Station City Hall and Terminal West will be temporarily suspended this Saturday from nine a.m. to five p.m. Free express shuttle buses will operate continuously outside each affected station every ten minutes. Commuters are advised to allocate an extra twenty minutes for their trips. Normal subway service will resume promptly on Saturday evening. We sincerely apologize for any inconvenience caused.',
+    passageWordCount: 78,
+    estimatedListeningSeconds: 41,
+    playbackLimit: 2,
+    keyPoints: [
+      'Central Line suspended between City Hall and Terminal West this Saturday 9 AM to 5 PM',
+      'Suspension is due to track maintenance and signal modernization',
+      'Free express shuttle buses will run every 10 minutes',
+      'Commuters should allow an extra 20 minutes of travel time',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'daily-life',
+    categoryLabel: '일상생활',
+  },
+  {
+    id: 'listen-sit-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'situation',
+    difficulty: 'intermediate',
+    practiceMode: 'listening-summary',
+    title: 'Conference Venue Relocation',
+    passage:
+      'Good afternoon, registered conference attendees. Because of an unexpected plumbing emergency in the main ballroom of the Grand Hotel, the annual Global Tech Summit has been relocated to the convention center across the street. All scheduled keynote presentations and afternoon breakout panels will proceed according to the original timetable. Shuttle vans will depart from the Grand Hotel lobby every fifteen minutes starting at eight a.m. to assist guests with luggage. Please proceed directly to Room 302 upon arrival to pick up your registration badges.',
+    passageWordCount: 85,
+    estimatedListeningSeconds: 44,
+    playbackLimit: 2,
+    keyPoints: [
+      'Global Tech Summit relocated to convention center across the street',
+      'Relocation caused by plumbing emergency in Grand Hotel ballroom',
+      'Keynotes and breakout panels will follow the original timetable',
+      'Shuttle vans depart every 15 minutes and badges are in Room 302',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'situation',
+    categoryLabel: '상황 대응',
+  },
+  {
+    id: 'listen-ps-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'problem-solving',
+    difficulty: 'intermediate',
+    practiceMode: 'listening-summary',
+    title: 'Supply Chain Component Delay Resolution',
+    passage:
+      'Team members, we have received notification from our overseas semiconductor supplier that our shipment of microcontrollers will be delayed by two weeks due to port congestion. To prevent production line stoppages, our procurement division has secured an alternative domestic supplier for seventy percent of the required volume. Production engineering is currently reviewing the technical specifications to ensure full compatibility. Meanwhile, non-critical product assemblies will be rescheduled to next month. We expect no disruption to our final delivery promises to retail partners.',
+    passageWordCount: 82,
+    estimatedListeningSeconds: 43,
+    playbackLimit: 2,
+    keyPoints: [
+      'Microcontroller shipment delayed two weeks due to port congestion',
+      'Domestic alternative supplier secured for 70% of required volume',
+      'Non-critical product assemblies rescheduled to next month',
+      'Final delivery promises to retail partners remain on schedule',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'problem-solving',
+    categoryLabel: '문제 해결',
+  },
+  {
+    id: 'listen-tl-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'travel-leisure',
+    difficulty: 'basic',
+    practiceMode: 'listening-summary',
+    title: 'National Park Trail Guidelines and Weather Warning',
+    passage:
+      'Welcome to Seoraksan National Park Visitors Center. Due to sudden temperature drops and freezing rain at higher elevations, the Summit Ridge Trail above Biseondae is currently closed for safety reasons. Lower valley hiking paths remain open, but visitors must wear sturdy non-slip footwear and warm waterproof clothing. The park shuttle bus will operate until six p.m. today. For your personal safety, please register your hiking group at the ranger station before beginning your trek, and remain on marked pathways at all times.',
+    passageWordCount: 82,
+    estimatedListeningSeconds: 42,
+    playbackLimit: 2,
+    keyPoints: [
+      'Summit Ridge Trail closed due to freezing rain and temperature drops',
+      'Lower valley paths are open but require non-slip footwear and warm gear',
+      'Park shuttle bus will run until 6 PM',
+      'Visitors must register at ranger station and stay on marked trails',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'travel-leisure',
+    categoryLabel: '여행 및 여가',
+  },
+  {
+    id: 'listen-op-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'opinion',
+    difficulty: 'intermediate',
+    practiceMode: 'listening-summary',
+    title: 'Town Hall Meeting on City Bike Sharing Expansion',
+    passage:
+      'During last night’s city council hearing, urban planning director Sarah Miller proposed doubling the budget for the municipal bicycle sharing network over the next two years. Supporters highlighted that the current fleet of shared bikes has already reduced downtown morning vehicular congestion by twelve percent. However, representatives from local small businesses voiced concerns that installing twenty new docking stations might eliminate valuable curbside customer parking. In response, the council decided to launch a thirty-day public survey before casting the final appropriation vote next month.',
+    passageWordCount: 83,
+    estimatedListeningSeconds: 44,
+    playbackLimit: 2,
+    keyPoints: [
+      'Director Miller proposed doubling municipal bike share budget over 2 years',
+      'Supporters note a 12% decrease in downtown morning traffic congestion',
+      'Small businesses worry new stations will reduce customer parking spots',
+      'Council will hold a 30-day public survey before the final vote next month',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'opinion',
+    categoryLabel: '의견',
+  },
+  {
+    id: 'listen-exp-01',
+    practiceArea: 'area-4-listening-summary',
+    topic: 'experience',
+    difficulty: 'intermediate',
+    practiceMode: 'listening-summary',
+    title: 'Customer Service AI Migration Pilot Review',
+    passage:
+      'In our quarterly debrief, the customer support department reviewed the first three months of using an automated AI ticketing system. Overall initial customer wait times dropped from twelve minutes down to under two minutes for standard inquiries. Nevertheless, customer satisfaction scores temporarily dipped during the first three weeks because the chatbot struggled with complex warranty return requests. After senior agents provided additional training examples and refined the escalation routing, satisfaction ratings rebounded to ninety-four percent. The team recommends expanding this system across global branches next quarter.',
+    passageWordCount: 86,
+    estimatedListeningSeconds: 45,
+    playbackLimit: 2,
+    keyPoints: [
+      'Automated ticketing dropped wait times from 12 minutes to under 2 minutes',
+      'Initial satisfaction dipped due to complex warranty return issues',
+      'Satisfaction rebounded to 94% after adding training data and escalation routes',
+      'Team recommends rolling out system to global branches next quarter',
+    ],
+    forbiddenVisibleDuringListening: true,
+    question: 'Listen to the passage twice and summarize what you heard.',
+    category: 'experience',
+    categoryLabel: '경험',
+  },
+];

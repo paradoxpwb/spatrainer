@@ -1,0 +1,1737 @@
+당신은 시니어 React, TypeScript 개발자이자 영어 말하기 학습 서비스의 데이터 아키텍트다.
+
+기존 React + TypeScript 기반 "SPA Speaking Trainer" 프로젝트의 문제 분류 구조를 개편하라.
+
+현재 프로젝트에는 다음 기능이 구현되어 있다.
+
+- Sprint 1: 질문 선택, 준비 타이머, 음성 녹음
+- Sprint 2: 음성 전사, Transcript, WPM, filler 및 반복 표현
+- Sprint 3: AI 코칭, Improved Answer, Retry Checklist
+- Sprint 4: PracticeSession, Retry, Attempt Comparison, Progress, History
+- Sprint 5-1: Technical SEO 또는 관련 구조
+
+현재 문제은행은 다음 8개 카테고리 중 하나만 선택하는 단일 분류 구조다.
+
+- 자기소개
+- 일상생활
+- 직장생활
+- 경험 설명
+- 상황 설명
+- 의견 제시
+- 문제 해결
+- 여행 및 여가
+
+이를 다음과 같은 이중 분류 구조로 변경하라.
+
+1. Practice Area
+2. Topic
+
+중요:
+
+이 프로젝트에서 사용하는 5개 Practice Area 명칭은 학습 서비스의 연습용 분류다. 이를 공식 SPA 시험기관이 공개한 고정 Part 명칭이라고 표현하지 않는다.
+
+Area 4 Listening Passage Summarization은 다음 시험 특성을 반영해야 한다.
+
+- 약 40~50초 분량의 다양한 영어 지문
+- 감독관 역할의 음성이 Passage를 2번 읽어줌
+- 사용자는 Passage 원문을 화면으로 볼 수 없음
+- 두 번의 청취가 끝난 후 들은 내용을 영어로 요약
+- 요약 답변을 음성으로 녹음
+- 청취 중에는 노트 작성 기능을 제공하지 않음
+- 일반 질문형 Practice와 구분되는 전용 흐름 사용
+
+==================================================
+1. 작업 시작 전 프로젝트 전체 분석
+==================================================
+
+App.tsx만 수정하지 말고, 다음 관련 파일을 모두 먼저 분석하라.
+
+- App.tsx
+- types/question.ts
+- types/recording.ts
+- types/practiceAttempt.ts
+- types/practiceSession.ts
+- types/coaching.ts
+- data/questionBank.ts
+- utils/questionUtils.ts
+- hooks/usePracticeSessions.ts
+- pages/PracticeSetupPage.tsx
+- pages/QuestionReadyPage.tsx
+- pages/PracticePage.tsx
+- pages/ResultPage.tsx
+- pages/ProgressPage.tsx
+- pages/HistoryPage.tsx
+- pages/SessionDetailPage.tsx
+- pages/ComparisonPage.tsx
+- localStorage 관련 유틸리티
+- storage migration 관련 파일
+- SEO route 또는 공개 Practice 페이지
+- 모든 테스트 파일
+
+분석할 내용:
+
+1. CategorySelection 타입 정의
+2. SpeakingQuestion 데이터 구조
+3. getRandomQuestion의 현재 signature
+4. getQuestionById 동작
+5. PracticeSettings 저장 구조
+6. PracticeAttempt 저장 구조
+7. PracticeSession 저장 구조
+8. Progress의 category 집계 방식
+9. History의 category 필터 방식
+10. AI Coaching 요청에 전달되는 category
+11. localStorage schemaVersion
+12. 기존 데이터 migration 방식
+13. QuestionReadyPage와 PracticePage의 공통 가정
+14. 모든 문제가 질문 문장 하나를 가진다고 가정하는 코드
+15. currentStep과 AppStep 정의
+16. Retry 시 question과 session을 복구하는 방식
+
+분석 결과를 간단히 정리한 후 실제 구현까지 완료한다.
+
+분석만 하고 작업을 중단하지 않는다.
+
+==================================================
+2. 반드시 유지할 기존 기능
+==================================================
+
+다음 기능을 삭제하거나 깨뜨리지 않는다.
+
+- Home
+- 일반 Question Practice
+- 준비 타이머
+- 답변 타이머
+- 음성 녹음
+- 녹음 재생
+- Speech-to-Text
+- Transcript 수정
+- 객관적 Speaking Metrics
+- AI Coaching
+- Retry Checklist
+- Direct Retry
+- Coaching Retry
+- PracticeSession
+- Attempt Number
+- Parent Attempt
+- Attempt Comparison
+- Progress Dashboard
+- History
+- Session Detail
+- Settings
+- 기존 localStorage 기록
+- 기존 AI Coaching 결과
+- 기존 목표 및 사용자 설정
+- Audio URL cleanup
+- MediaStream cleanup
+
+기존 데이터를 초기화하거나 삭제하지 않는다.
+
+==================================================
+3. 새로운 5개 Practice Area
+==================================================
+
+다음 5개 Practice Area를 정의한다.
+
+type PracticeAreaId =
+  | "area-1-personal-workplace"
+  | "area-2-business-follow-up"
+  | "area-3-opinion-extended"
+  | "area-4-listening-summary"
+  | "area-5-visual-prompt";
+
+각 Area의 화면 표시 정보:
+
+Area 1
+
+한국어:
+개인 및 직장 기본 문답
+
+영어:
+Personal & Workplace Q&A
+
+설명:
+자기소개, 일상생활, 담당 업무와 직장 경험에 관한 질문에 직접 답하는 연습
+
+practiceMode:
+standard-question
+
+권장 답변시간:
+30~60초
+
+Area 2
+
+한국어:
+비즈니스 문답 및 후속 질문
+
+영어:
+Business Q&A & Follow-up
+
+설명:
+업무, 고객, 기술, 제품, 조직 및 문제 해결 질문에 답하고 후속 질문에 대응하는 연습
+
+practiceMode:
+follow-up-question
+
+권장 답변시간:
+45~90초
+
+Area 3
+
+한국어:
+의견 및 확장 답변
+
+영어:
+Opinion & Extended Response
+
+설명:
+업무 또는 일반 주제에 대해 의견, 이유, 예시와 결론을 포함해 답하는 연습
+
+practiceMode:
+extended-response
+
+권장 답변시간:
+60~120초
+
+Area 4
+
+한국어:
+듣기 지문 요약
+
+영어:
+Listening Passage Summarization
+
+설명:
+약 40~50초 분량의 영어 Passage를 두 번 듣고 핵심 내용을 요약하는 연습
+
+practiceMode:
+listening-summary
+
+권장 청취:
+2회
+
+권장 Passage 길이:
+약 40~50초
+
+권장 요약 답변시간:
+45~90초
+
+Area 5
+
+한국어:
+시각 자료 및 제시문 답변
+
+영어:
+Visual & Prompt-based Response
+
+설명:
+사진, 그래프, 표, 지도 또는 짧은 제시문을 보고 묘사, 비교하거나 의견을 설명하는 연습
+
+practiceMode:
+visual-prompt
+
+권장 답변시간:
+60~120초
+
+UI에 다음 안내를 표시한다.
+
+"5개 Practice Area는 효과적인 연습을 위해 구성한 분류이며 공식 시험기관의 고정 Part 명칭을 의미하지 않습니다."
+
+==================================================
+4. 기존 8개 분류를 Topic으로 전환
+==================================================
+
+기존 8개 카테고리를 삭제하지 말고 Topic으로 전환한다.
+
+type TopicId =
+  | "self-introduction"
+  | "daily-life"
+  | "workplace"
+  | "experience"
+  | "situation"
+  | "opinion"
+  | "problem-solving"
+  | "travel-leisure";
+
+Topic 표시 정보:
+
+self-introduction:
+- 자기소개
+- Self-introduction
+
+daily-life:
+- 일상생활
+- Daily Life
+
+workplace:
+- 직장생활
+- Workplace
+
+experience:
+- 경험
+- Experience
+
+situation:
+- 상황 대응
+- Situational Response
+
+opinion:
+- 의견
+- Opinion
+
+problem-solving:
+- 문제 해결
+- Problem Solving
+
+travel-leisure:
+- 여행 및 여가
+- Travel & Leisure
+
+향후 확장을 고려해 다음 Topic을 선택적으로 추가할 수 있도록 타입과 UI를 확장 가능하게 설계한다.
+
+- customer-service
+- business
+- technology
+- product
+- management
+- social-issues
+
+그러나 현재 문제은행에 실제 문제가 없다면 빈 Topic 카드를 표시하지 않는다.
+
+==================================================
+5. Practice Area와 Topic 관계
+==================================================
+
+모든 Topic이 모든 Area에서 사용될 필요는 없다.
+
+Practice Area별 허용 Topic을 설정 파일로 관리한다.
+
+예:
+
+const practiceAreaTopicMap = {
+  "area-1-personal-workplace": [
+    "self-introduction",
+    "daily-life",
+    "workplace",
+    "experience",
+    "travel-leisure"
+  ],
+
+  "area-2-business-follow-up": [
+    "workplace",
+    "experience",
+    "situation",
+    "problem-solving"
+  ],
+
+  "area-3-opinion-extended": [
+    "opinion",
+    "workplace",
+    "problem-solving",
+    "daily-life",
+    "travel-leisure"
+  ],
+
+  "area-4-listening-summary": [
+    "workplace",
+    "daily-life",
+    "experience",
+    "situation",
+    "problem-solving",
+    "travel-leisure",
+    "opinion"
+  ],
+
+  "area-5-visual-prompt": [
+    "workplace",
+    "daily-life",
+    "opinion",
+    "problem-solving",
+    "travel-leisure"
+  ]
+};
+
+이 mapping을 여러 컴포넌트에 중복 작성하지 않는다.
+
+하나의 설정 파일을 source of truth로 사용한다.
+
+권장 파일:
+
+src/config/practiceTaxonomy.ts
+
+==================================================
+6. 새로운 타입 구조
+==================================================
+
+types/question.ts를 하위 호환되게 확장한다.
+
+권장 구조:
+
+type PracticeMode =
+  | "standard-question"
+  | "follow-up-question"
+  | "extended-response"
+  | "listening-summary"
+  | "visual-prompt";
+
+interface PracticeAreaDefinition {
+  id: PracticeAreaId;
+  order: number;
+  labelKo: string;
+  labelEn: string;
+  description: string;
+  practiceMode: PracticeMode;
+  defaultPreparationSeconds: number;
+  defaultAnswerSeconds: number;
+  enabled: boolean;
+  availableTopicIds: TopicId[];
+}
+
+interface TopicDefinition {
+  id: TopicId;
+  labelKo: string;
+  labelEn: string;
+  description?: string;
+  enabled: boolean;
+}
+
+interface BasePracticeItem {
+  id: string;
+  practiceArea: PracticeAreaId;
+  topic: TopicId;
+  difficulty: "basic" | "intermediate";
+  title?: string;
+  tags?: string[];
+}
+
+interface StandardSpeakingQuestion extends BasePracticeItem {
+  practiceMode:
+    | "standard-question"
+    | "extended-response";
+
+  question: string;
+}
+
+interface FollowUpSpeakingQuestion extends BasePracticeItem {
+  practiceMode: "follow-up-question";
+  question: string;
+  followUpQuestions: string[];
+}
+
+interface ListeningSummaryQuestion extends BasePracticeItem {
+  practiceMode: "listening-summary";
+  passage: string;
+  passageWordCount: number;
+  estimatedListeningSeconds: number;
+  playbackLimit: 2;
+  keyPoints: string[];
+  forbiddenVisibleDuringListening: true;
+}
+
+interface VisualPromptQuestion extends BasePracticeItem {
+  practiceMode: "visual-prompt";
+  question: string;
+  visualType:
+    | "photo"
+    | "graph"
+    | "table"
+    | "map"
+    | "text-prompt";
+  visualAsset?: string;
+  visualAlt: string;
+  expectedElements?: string[];
+}
+
+type SpeakingQuestion =
+  | StandardSpeakingQuestion
+  | FollowUpSpeakingQuestion
+  | ListeningSummaryQuestion
+  | VisualPromptQuestion;
+
+TypeScript discriminated union을 사용해 practiceMode별 필드를 안전하게 처리한다.
+
+any 사용을 피한다.
+
+==================================================
+7. 기존 CategorySelection 변경
+==================================================
+
+기존 CategorySelection을 즉시 삭제하여 전체 프로젝트를 깨뜨리지 않는다.
+
+다음 단계로 안전하게 전환한다.
+
+새 타입:
+
+type PracticeAreaSelection = PracticeAreaId | "all";
+type TopicSelection = TopicId | "all";
+
+interface PracticeSelection {
+  practiceArea: PracticeAreaSelection;
+  topic: TopicSelection;
+}
+
+기존 CategorySelection은 migration 또는 compatibility layer에서만 사용할 수 있다.
+
+새 코드에서는 TopicSelection을 사용한다.
+
+App.tsx 상태 변경:
+
+현재:
+
+const [selectedCategory, setSelectedCategory]
+
+변경:
+
+const [selectedPracticeArea, setSelectedPracticeArea]
+const [selectedTopic, setSelectedTopic]
+
+또는:
+
+const [practiceSelection, setPracticeSelection]
+
+권장:
+
+const [practiceSelection, setPracticeSelection] =
+  useState<PracticeSelection>(() => loadPracticeSelection());
+
+단일 객체를 사용해 Area와 Topic 상태 불일치를 줄인다.
+
+==================================================
+8. PracticeSettings 확장
+==================================================
+
+PracticeSettings를 하위 호환되게 확장한다.
+
+interface PracticeSettings {
+  preparationDuration: number;
+  answerDuration: number;
+
+  lastSelectedPracticeArea:
+    | PracticeAreaId
+    | null;
+
+  lastSelectedTopic:
+    | TopicId
+    | "all"
+    | null;
+
+  lastSelectedCategory?: LegacyCategorySelection;
+}
+
+기존 lastSelectedCategory가 있으면 Topic으로 migration한다.
+
+예:
+
+lastSelectedCategory: "work"
+→ lastSelectedTopic: "workplace"
+
+기존 값이 어떤 Topic에 해당하는지 확실하지 않으면 "all"을 사용한다.
+
+기존 값을 삭제하지 않아도 되지만 새 코드의 source of truth로 사용하지 않는다.
+
+==================================================
+9. SpeakingQuestion 데이터 Migration
+==================================================
+
+기존 questionBank의 각 질문에 다음 필드를 추가한다.
+
+- practiceArea
+- topic
+- practiceMode
+
+기존 category는 migration 기간 동안 optional legacy 필드로 유지할 수 있다.
+
+기존 질문 mapping 기본 규칙:
+
+자기소개:
+- topic: self-introduction
+- 기본 area: area-1-personal-workplace
+
+일상생활:
+- topic: daily-life
+- 기본 area: area-1-personal-workplace
+- 의견형 질문이면 area-3-opinion-extended
+
+직장생활:
+- topic: workplace
+- 기본 area: area-1-personal-workplace
+- 비즈니스 상황이나 후속 질문형이면 area-2-business-follow-up
+
+경험 설명:
+- topic: experience
+- 기본 area: area-1 또는 area-2
+- 업무 문제 해결 경험이면 area-2
+
+상황 설명:
+- topic: situation
+- 기본 area: area-2-business-follow-up
+
+의견 제시:
+- topic: opinion
+- 기본 area: area-3-opinion-extended
+
+문제 해결:
+- topic: problem-solving
+- 기본 area: area-2-business-follow-up
+- 일반 정책이나 선택에 관한 의견형이면 area-3
+
+여행 및 여가:
+- topic: travel-leisure
+- 기본 area: area-1
+- 선호도나 찬반형이면 area-3
+
+질문의 실제 내용을 분석하여 가장 적절한 Area를 배정한다.
+
+현재 category 이름만 보고 기계적으로 배정하지 않는다.
+
+==================================================
+10. Area 2 Follow-up 데이터
+==================================================
+
+Area 2 질문에는 최대 2~3개의 자체 제작 후속 질문을 제공한다.
+
+예:
+
+Initial:
+"What is the most challenging part of your job?"
+
+Follow-up:
+- "Why do you find it challenging?"
+- "Can you give me a specific example?"
+- "How did you handle the situation?"
+
+이번 구조 개편에서는 최소한 데이터 구조와 UI가 followUpQuestions를 인식하도록 구현한다.
+
+현재 Sprint 범위에서 동적 AI follow-up은 추가하지 않는다.
+
+Area 2의 기본 동작:
+
+1. Main Question 표시
+2. 사용자가 답변
+3. Main recording 완료
+4. 등록된 Follow-up 중 하나 표시
+5. Follow-up 답변 녹음
+6. 각 답변을 동일 Session 안에서 구분된 Attempt 또는 Turn으로 저장
+
+기존 PracticeAttempt 구조를 과도하게 깨뜨릴 경우 다음 방식 중 안전한 방식을 선택한다.
+
+A. PracticeAttempt에 conversationTurns 추가
+
+또는
+
+B. 각 Turn을 동일 sessionId의 연속 Attempt로 저장하고 turnType 추가
+
+권장 타입:
+
+type AttemptTurnType =
+  | "main-question"
+  | "follow-up"
+  | "summary"
+  | "visual-response";
+
+기존 데이터에는 optional 필드로 추가한다.
+
+==================================================
+11. Area 3 Extended Response
+==================================================
+
+Area 3는 다음 구조로 안내한다.
+
+- Opinion
+- Reason
+- Example
+- Conclusion
+
+QuestionReadyPage 또는 전용 안내 컴포넌트에서 구조 힌트를 보여줄 수 있다.
+
+단, 실제 녹음 중에는 전체 모범답안을 보여주지 않는다.
+
+Area 3의 AI Coaching에서는 이미 구현된 Relevance와 Structure 분석을 재사용한다.
+
+질문에 따라 모든 답변에 Conclusion을 강제하지 않는다.
+
+==================================================
+12. Area 4 Listening Passage Summarization
+==================================================
+
+Area 4는 일반 question string만 표시하는 기존 흐름으로 처리하면 안 된다.
+
+전용 상태나 전용 화면을 구현한다.
+
+권장 컴포넌트:
+
+src/components/listening/
+  ListeningInstructions.tsx
+  PassagePlayback.tsx
+  PlaybackProgress.tsx
+  ListeningComplete.tsx
+
+또는 전용 페이지:
+
+src/pages/ListeningSummaryPage.tsx
+
+Area 4 흐름:
+
+1. 안내 화면
+2. 마이크가 아니라 오디오 출력 준비
+3. 첫 번째 Passage 재생
+4. 짧은 간격
+5. 두 번째 Passage 재생
+6. 두 번째 재생 종료
+7. 요약 녹음 준비
+8. 사용자가 요약 녹음
+9. ResultPage
+10. Transcript
+11. Key Point Coverage 분석
+12. Retry
+
+Area 4 고정 조건:
+
+- Passage 재생 횟수는 정확히 2회
+- 사용자가 임의로 무제한 재생할 수 없음
+- Passage 원문을 청취 전, 청취 중, 답변 중에 화면에 표시하지 않음
+- 원문은 AI 평가 또는 결과 분석을 위해 내부 데이터로만 사용
+- 약 40~50초 분량 목표
+- 다양한 주제 사용
+- 두 번의 청취 후 요약
+- 녹음 중 원문 또는 핵심 포인트를 보여주지 않음
+
+Passage 길이:
+
+일반적인 영어 낭독 속도를 고려해 약 90~120단어 범위로 작성한다.
+
+그러나 실제 길이는 단어 수만으로 확정하지 않는다.
+
+실제 사용되는 음성 속도에서 40~50초인지 확인할 수 있도록 estimatedListeningSeconds를 저장한다.
+
+허용 범위:
+
+- 최소 35초
+- 목표 40~50초
+- 최대 약 55초
+
+Passage 주제 예:
+
+- 직장 정책 변경
+- 고객 서비스 상황
+- 회사 행사
+- 출장 일정
+- 제품 업데이트
+- 교통 또는 여행 안내
+- 간단한 비즈니스 뉴스
+- 안전 절차
+- 회의 일정 변경
+- 직원 교육
+
+Passage는 자체 제작 콘텐츠를 사용한다.
+
+공식 시험 지문이나 실제 기출문제를 복제하지 않는다.
+
+==================================================
+13. Area 4 음성 재생 방식
+==================================================
+
+현재 프로젝트에 TTS 서비스 또는 음원 구조가 있는지 먼저 확인한다.
+
+우선순위:
+
+1. 실제 bundled audio asset이 있으면 해당 음원 사용
+2. 서버 TTS가 이미 있으면 기존 구조 재사용
+3. 없다면 브라우저 speechSynthesis 기반 MVP 구현 가능
+4. speechSynthesis 미지원 시 안전한 오류와 대체 안내 제공
+
+speechSynthesis를 사용할 경우:
+
+- Passage 원문은 UI에 표시하지 않음
+- 영어 voice 선택
+- 적절한 rate 설정
+- 한 번 재생 중 중복 재생 금지
+- 첫 번째와 두 번째 재생 상태 구분
+- 화면 이탈 시 speechSynthesis.cancel()
+- 컴포넌트 unmount 시 cancel
+- 재생 횟수 상태를 안전하게 관리
+- 빠른 버튼 중복 클릭 방지
+- 재생 도중 다른 문제 이동 시 정리
+- 브라우저별 voice loading 지연 처리
+- 음성 재생이 실패하면 자동으로 답변 단계로 넘어가지 않음
+
+표시 문구 예:
+
+"첫 번째 청취 중입니다."
+
+"두 번째 청취 중입니다."
+
+"두 번의 청취가 완료되었습니다. 들은 내용을 영어로 요약해 주세요."
+
+사용자가 두 번 사이에 Passage 원문을 볼 수 없게 한다.
+
+==================================================
+14. Area 4 결과 분석 데이터
+==================================================
+
+ListeningSummaryQuestion의 keyPoints를 사용하여 향후 또는 현재 AI Coaching에서 다음을 분석할 수 있게 한다.
+
+- 핵심 정보 포함
+- 누락한 핵심 정보
+- 잘못 전달한 정보
+- 원문에 없는 정보 추가
+- 요약 구조
+- 문법 및 표현
+
+Practice Result에 추가 가능한 타입:
+
+interface ListeningSummaryAnalysis {
+  totalKeyPoints: number;
+  coveredKeyPoints: string[];
+  missingKeyPoints: string[];
+  inaccurateStatements: Array<{
+    transcriptText: string;
+    explanation: string;
+  }>;
+  unsupportedAdditions: string[];
+}
+
+이번 구조 개편에서 AI 분석까지 구현하는 것이 기존 범위를 과도하게 확장한다면:
+
+- 타입
+- 데이터 전달 구조
+- 결과 UI placeholder가 아닌 안전한 미구현 상태
+- 향후 연결 지점
+
+까지만 작성한다.
+
+가짜 분석 결과를 표시하지 않는다.
+
+"분석 준비 중" 버튼을 추가하지 않는다.
+
+실제 분석이 없다면 기존 Transcript와 객관 지표만 표시한다.
+
+==================================================
+15. Area 5 Visual Prompt
+==================================================
+
+Area 5는 visualAsset 또는 text prompt를 표시할 수 있도록 QuestionReadyPage와 PracticePage를 확장한다.
+
+요구사항:
+
+- visualAsset이 있으면 실제 존재하는 asset만 표시
+- 이미지 alt 제공
+- 그래프, 표, 지도에 의미 있는 설명 제공
+- 답변 전에 시각 자료를 확인할 수 있음
+- 녹음 중에도 시각 자료를 유지할 수 있음
+- 원본이 없는 깨진 이미지 URL 금지
+- 공식 시험 이미지를 복제하지 않음
+- 자체 제작 자료만 사용
+
+Area 5 Question 유형:
+
+- describe
+- compare
+- preference
+- explain-trend
+- recommendation
+
+필요하다면 다음 타입을 추가한다.
+
+type VisualTaskType =
+  | "describe"
+  | "compare"
+  | "preference"
+  | "explain-trend"
+  | "recommendation";
+
+==================================================
+16. questionUtils API 개편
+==================================================
+
+현재 함수:
+
+getRandomQuestion(category, excludeQuestionId?)
+
+변경 후 권장 함수:
+
+interface QuestionFilter {
+  practiceArea: PracticeAreaSelection;
+  topic: TopicSelection;
+  excludeQuestionId?: string;
+  practiceMode?: PracticeMode;
+}
+
+getRandomQuestion(filter: QuestionFilter): SpeakingQuestion
+
+추가 함수:
+
+getQuestionsByArea(areaId)
+getQuestionsByTopic(topicId)
+getQuestionsByAreaAndTopic(areaId, topicId)
+getAvailableTopicsForArea(areaId)
+getQuestionById(questionId)
+isQuestionCompatibleWithSelection(question, selection)
+getRandomListeningPassage(topic, excludeQuestionId?)
+getRandomVisualPrompt(topic, excludeQuestionId?)
+
+호환성을 위해 기존 getRandomQuestion signature를 유지할 필요가 있다면 wrapper를 만들 수 있다.
+
+그러나 새 App.tsx와 새 페이지에서는 새 filter object signature를 사용한다.
+
+빈 필터 결과 처리:
+
+- 앱 crash 금지
+- undefined를 SpeakingQuestion으로 단정 금지
+- 해당 조합에 문제가 없다는 안내
+- 선택 화면으로 돌아갈 수 있는 버튼
+- 다른 Topic 선택 옵션
+
+==================================================
+17. App.tsx 상태 구조 개편
+==================================================
+
+현재 App.tsx의 다음 상태를 변경한다.
+
+현재:
+
+const [selectedCategory, setSelectedCategory]
+
+변경 권장:
+
+const [practiceSelection, setPracticeSelection] =
+  useState<PracticeSelection>(() => loadPracticeSelection());
+
+또는:
+
+const [selectedPracticeArea, setSelectedPracticeArea]
+const [selectedTopic, setSelectedTopic]
+
+단일 PracticeSelection 객체를 우선한다.
+
+handleStartQuestion 변경:
+
+현재:
+
+handleStartQuestion(category)
+
+변경:
+
+handleStartQuestion(selection: PracticeSelection)
+
+동작:
+
+1. Practice Area 저장
+2. Topic 저장
+3. PracticeSettings 업데이트
+4. 두 조건에 맞는 문제 선택
+5. practiceMode에 맞는 흐름 시작
+6. PracticeSession에 Area와 Topic 저장
+
+handleChangeQuestion 변경:
+
+- 현재 Area 유지
+- 현재 Topic 유지
+- 현재 문제 제외
+- 같은 practiceMode 유지
+
+handleNextQuestion 변경:
+
+- 현재 Area와 Topic 유지
+- 현재 문제 제외
+- 새 PracticeSession 생성
+
+launchQuestionById:
+
+- Question 데이터에서 practiceArea와 topic 복구
+- practiceSelection 업데이트
+- 새 Session 또는 기존 Session Retry 여부에 따라 처리
+
+==================================================
+18. AppStep 확장
+==================================================
+
+필요하다면 AppStep에 다음 상태를 추가한다.
+
+type AppStep =
+  | existingSteps
+  | "select-practice-area"
+  | "select-topic"
+  | "listening-instructions"
+  | "listening-playback"
+  | "listening-ready-to-summarize"
+  | "visual-ready";
+
+현재 setup 화면에서 Area와 Topic을 한 페이지에 자연스럽게 선택할 수 있다면 AppStep을 과도하게 늘리지 않는다.
+
+권장 흐름:
+
+Home
+→ Practice Setup
+→ Area 선택
+→ Topic 선택
+→ Question Ready
+→ Area별 Practice
+→ Result
+
+Area 4:
+
+Home
+→ Practice Setup
+→ Area 4
+→ Topic
+→ Listening Instructions
+→ Passage 1
+→ Passage 2
+→ Summary Recording
+→ Result
+
+==================================================
+19. PracticeSetupPage 개편
+==================================================
+
+기존 8개 카테고리 카드 화면을 다음 2단계 UI로 변경한다.
+
+Step 1:
+Practice Area 선택
+
+5개 Area 카드 표시:
+
+- Area 번호
+- 한국어 이름
+- 영어 이름
+- 짧은 설명
+- Practice Mode
+- 권장 답변시간
+
+Step 2:
+선택 Area에서 사용할 수 있는 Topic 선택
+
+표시:
+
+- 전체 Topic
+- 해당 Area에서 사용 가능한 Topic만 표시
+- 실제 문제 수가 0인 Topic은 표시하지 않거나 disabled 처리
+- disabled 상태에는 이유 표시
+
+사용자는 Area와 Topic을 선택한 후 연습을 시작한다.
+
+유효성 검사:
+
+- Area 미선택
+- Topic 미선택
+- 해당 조합에 문제 없음
+
+오류 메시지 예:
+
+"먼저 연습할 Practice Area를 선택해 주세요."
+
+"연습할 Topic을 선택해 주세요."
+
+"현재 선택한 Area와 Topic 조합에 사용할 수 있는 문제가 없습니다."
+
+Area 4 카드에는 다음 안내를 표시한다.
+
+"약 40~50초 Passage를 두 번 듣고 영어로 요약합니다."
+
+==================================================
+20. PracticeSession 확장
+==================================================
+
+PracticeSession을 하위 호환되게 확장한다.
+
+interface PracticeSession {
+  existingFields...
+
+  practiceArea?: PracticeAreaId;
+  topic?: TopicId;
+  practiceMode?: PracticeMode;
+}
+
+기존 category와 categoryLabel은 바로 삭제하지 않는다.
+
+새 Session부터 다음 필드를 저장한다.
+
+- practiceArea
+- topic
+- practiceMode
+
+기존 category는 compatibility를 위해 topic과 동일하거나 legacy 값으로 보존할 수 있다.
+
+Progress와 History의 source of truth는 새 데이터에서는 practiceArea와 topic이다.
+
+==================================================
+21. PracticeAttempt 확장
+==================================================
+
+PracticeAttempt에도 다음 optional 필드를 추가한다.
+
+interface PracticeAttempt {
+  existingFields...
+
+  practiceArea?: PracticeAreaId;
+  topic?: TopicId;
+  practiceMode?: PracticeMode;
+  turnType?: AttemptTurnType;
+
+  listeningContext?: {
+    passageId: string;
+    playbackCount: number;
+    expectedPlaybackCount: 2;
+    passageDurationSeconds?: number;
+  };
+
+  visualContext?: {
+    visualType: string;
+    taskType?: VisualTaskType;
+    visualAsset?: string;
+  };
+}
+
+Area 4 Attempt에는 passage 원문 전체를 사용자 기록에 불필요하게 중복 저장하지 않는다.
+
+passageId를 저장하고 questionBank에서 참조할 수 있게 한다.
+
+==================================================
+22. createNewSession 호출 변경
+==================================================
+
+현재 App.tsx의 다음 호출을 확장한다.
+
+현재:
+
+createNewSession({
+  questionId,
+  question,
+  category,
+  categoryLabel,
+  difficulty
+})
+
+변경:
+
+createNewSession({
+  questionId: question.id,
+  question: getDisplayPrompt(question),
+  category: legacyCategoryValue,
+  categoryLabel: getTopicLabel(question.topic),
+  difficulty: question.difficulty,
+  practiceArea: question.practiceArea,
+  topic: question.topic,
+  practiceMode: question.practiceMode
+})
+
+Listening question의 경우 passage 전체를 question 필드로 저장하지 않는다.
+
+표시용 prompt:
+
+"Listen to the passage twice and summarize what you heard."
+
+을 저장한다.
+
+==================================================
+23. Retry 동작
+==================================================
+
+Retry 시 Area, Topic, practiceMode를 유지한다.
+
+Direct Retry:
+
+- 같은 Question
+- 같은 Area
+- 같은 Topic
+- 같은 Practice Mode
+- 같은 Session
+- Attempt Number 증가
+
+Coaching Retry:
+
+- 같은 Question
+- 같은 Area
+- 같은 Topic
+- 같은 Practice Mode
+- Retry Context 유지
+
+History Retry:
+
+- getQuestionById로 Question 복구
+- practiceArea와 topic 복구
+- 기존 Session에 연결
+- Area별 전용 흐름 사용
+
+Area 4 Retry:
+
+- Passage를 다시 두 번 듣는 전체 흐름부터 시작
+- 직전 playback count를 재사용하지 않음
+- 새 Attempt의 playback count는 0에서 시작
+- 원문은 계속 숨김
+- 동일 Passage로 Retry
+
+==================================================
+24. Progress Dashboard 변경
+==================================================
+
+기존 category별 집계를 다음 두 축으로 확장한다.
+
+1. Practice Area별 통계
+2. Topic별 통계
+
+Area별 표시:
+
+- 연습 Attempt 수
+- Session 수
+- Retry 수
+- 마지막 연습일
+- 평균 답변시간
+- 평균 WPM
+- 평균 filler rate
+
+Topic별 표시:
+
+- 연습 Attempt 수
+- Retry 수
+- 마지막 연습일
+
+기존 category 기록은 migration 결과에 따라 Topic 통계에 포함한다.
+
+Area 정보가 없는 과거 기록은:
+
+- "기존 연습 기록"
+또는
+- legacy 영역
+
+으로 안전하게 처리한다.
+
+과거 데이터를 임의의 Area로 확정하지 않는다.
+
+==================================================
+25. History 변경
+==================================================
+
+History 필터를 다음과 같이 변경한다.
+
+- 기간
+- Practice Area
+- Topic
+- Retry 여부
+- AI Coaching 여부
+
+목록 표시:
+
+- Practice Area
+- Topic
+- 질문 또는 연습 Prompt
+- Attempt 수
+- practiceMode
+- 마지막 연습일
+
+기존 category 필터를 즉시 삭제하지 않는다.
+
+migration된 Topic 필터로 대체한다.
+
+==================================================
+26. Session Detail과 Comparison 변경
+==================================================
+
+Session Detail에 다음을 표시한다.
+
+- Practice Area
+- Topic
+- Practice Mode
+- Question 또는 Prompt
+- Attempt 목록
+
+Area 4:
+
+- Passage 제목 또는 Passage ID
+- 청취 횟수
+- Passage 예상 길이
+- 사용자 Summary Transcript
+- Passage 원문은 기본적으로 표시하지 않음
+
+필요하다면 결과 검토용 개발 설정에서만 원문을 볼 수 있지만 일반 사용자 UI에는 노출하지 않는다.
+
+Comparison은 같은 PracticeSession의 Attempt만 비교한다.
+
+Area 4 비교:
+
+- Summary Transcript 변화
+- 핵심 정보 Coverage가 실제 구현된 경우 Coverage 변화
+- WPM
+- 답변시간
+- filler rate
+
+청취 Passage 자체는 비교 대상으로 표시하지 않는다.
+
+==================================================
+27. 기존 데이터 Migration
+==================================================
+
+localStorage schemaVersion을 올리고 migration을 구현한다.
+
+기존 SpeakingQuestion 참조 데이터와 PracticeAttempt 기록을 보존한다.
+
+기존 category → Topic mapping:
+
+self-introduction → self-introduction
+daily-life → daily-life
+work → workplace
+workplace → workplace
+experience → experience
+situation → situation
+opinion → opinion
+problem-solving → problem-solving
+travel → travel-leisure
+travel-leisure → travel-leisure
+
+기존 기록에 practiceArea 정보가 없는 경우:
+
+- questionId로 현재 questionBank를 조회
+- 일치하는 Question이 있으면 해당 Question의 practiceArea와 topic 사용
+- 찾지 못하면 topic은 legacy category mapping 사용
+- practiceArea는 임의로 추정하지 않고 undefined 또는 legacy로 유지
+
+과거 기록을 잘못된 Area에 강제 배정하지 않는다.
+
+AI Coaching, metrics, Transcript, Session 관계를 보존한다.
+
+migration 실패 시 localStorage 전체를 삭제하지 않는다.
+
+==================================================
+28. SEO 구조 반영
+==================================================
+
+이미 Sprint 5 Technical SEO 구조가 있다면 공개 URL과 metadata를 다음 구조로 확장 가능하게 한다.
+
+권장 공개 URL:
+
+/spa-practice
+/spa-practice/personal-workplace
+/spa-practice/business-follow-up
+/spa-practice/opinion
+/spa-practice/listening-summary
+/spa-practice/visual-description
+
+이번 작업에서 장문 SEO 콘텐츠를 만들 필요는 없다.
+
+그러나 Area 이름, slug, description을 중앙 설정에서 재사용할 수 있게 한다.
+
+Area 4 공개 설명:
+
+"약 40~50초 분량의 영어 Passage를 두 번 듣고 핵심 내용을 요약하는 Listening Practice"
+
+다음과 같이 확정적으로 표현하지 않는다.
+
+- 공식 Area 4 기출문제
+- 공식 시험 동일 지문
+- 실제 SPA 공식 Passage
+
+비공식 연습용 자체 제작 지문임을 표시한다.
+
+==================================================
+29. 권장 파일 구조
+==================================================
+
+기존 구조를 우선 확인한다.
+
+권장 파일:
+
+src/
+  config/
+    practiceTaxonomy.ts
+
+  data/
+    questionBank.ts
+    listeningPassages.ts
+    visualPrompts.ts
+
+  types/
+    question.ts
+    practiceTaxonomy.ts
+
+  components/
+    practice/
+      PracticeAreaCard.tsx
+      TopicCard.tsx
+      PracticeSelectionSummary.tsx
+
+    listening/
+      ListeningInstructions.tsx
+      PassagePlayback.tsx
+      PlaybackProgress.tsx
+      ListeningComplete.tsx
+
+    visual/
+      VisualPrompt.tsx
+
+  pages/
+    PracticeSetupPage.tsx
+    ListeningSummaryPage.tsx
+
+  utils/
+    questionUtils.ts
+    practiceTaxonomyUtils.ts
+    practiceDataMigration.ts
+
+기존 파일과 역할이 중복되면 새로운 파일을 만들지 않고 기존 파일을 확장한다.
+
+==================================================
+30. 테스트 요구사항
+==================================================
+
+기존 테스트 프레임워크를 유지한다.
+
+없다면 Vitest를 사용한다.
+
+필수 테스트:
+
+A. Taxonomy
+
+- 5개 Practice Area 존재
+- Area ID 중복 없음
+- Topic ID 중복 없음
+- 모든 Area에 사용 가능한 Topic 존재
+- Area 4 practiceMode가 listening-summary
+- Area 4 playback limit가 2
+
+B. Question Validation
+
+- 모든 Question에 practiceArea 존재
+- 모든 Question에 topic 존재
+- 모든 Question에 practiceMode 존재
+- Area와 Topic mapping 유효
+- Listening question에 passage 존재
+- Listening question에 keyPoints 존재
+- Listening playbackLimit가 2
+- Visual question의 asset 유효성
+
+C. Question Filter
+
+- Area만 선택
+- Topic만 선택
+- Area와 Topic 선택
+- 현재 문제 제외
+- 빈 조합
+- all Area
+- all Topic
+
+D. Settings Migration
+
+- 기존 lastSelectedCategory
+- 새로운 lastSelectedPracticeArea
+- 새로운 lastSelectedTopic
+- 손상된 settings
+- 존재하지 않는 Topic
+
+E. PracticeSession
+
+- 새 Session에 Area와 Topic 저장
+- Retry에 동일 Area와 Topic 유지
+- 다음 문제에 새 Session 생성
+- Area 4 Session에 passage 원문 미저장
+
+F. History Migration
+
+- 기존 category를 Topic으로 변환
+- questionId를 통해 Area 복구
+- questionId가 없을 때 Area 강제 추정 안 함
+- AI Coaching 보존
+- metrics 보존
+- sessionId 보존
+
+G. Area 4 Playback
+
+- 첫 번째 재생
+- 두 번째 재생
+- 세 번째 재생 차단
+- Passage 텍스트 미표시
+- 두 번째 재생 전 Summary 녹음 차단
+- 두 번째 재생 후 Summary 녹음 가능
+- 화면 이탈 시 음성 취소
+- component unmount 시 음성 취소
+- 빠른 중복 클릭 방지
+
+H. Retry
+
+- Area 4 Retry 시 playback count 초기화
+- 동일 passage 유지
+- 같은 session 유지
+- attempt number 증가
+
+I. App Routing
+
+- Area 1 standard flow
+- Area 2 follow-up flow
+- Area 3 extended flow
+- Area 4 listening flow
+- Area 5 visual flow
+
+==================================================
+31. 통합 테스트 시나리오
+==================================================
+
+시나리오 1. Area 1
+
+- Personal & Workplace 선택
+- Workplace Topic 선택
+- 질문 출제
+- 녹음
+- Result
+- Session에 Area와 Topic 저장
+
+시나리오 2. Area 2
+
+- Business & Follow-up 선택
+- Problem Solving 선택
+- Main Question
+- Follow-up Question
+- 각 답변 저장
+- 동일 Session 확인
+
+시나리오 3. Area 3
+
+- Opinion 선택
+- Opinion Topic 선택
+- Extended Response 안내
+- 녹음
+- AI Structure 분석 연결 유지
+
+시나리오 4. Area 4
+
+- Listening Summary 선택
+- Workplace Topic 선택
+- 40~50초 Passage 선택
+- 첫 번째 재생
+- 두 번째 재생
+- Passage 원문 비노출 확인
+- Summary 녹음
+- Transcript
+- Session 및 Attempt 저장
+
+시나리오 5. Area 4 Retry
+
+- Listening Summary 결과
+- Same Question Retry
+- 동일 Passage
+- playback count 0
+- 다시 두 번 청취
+- 새 Attempt 저장
+
+시나리오 6. Area 5
+
+- Visual Prompt 선택
+- 실제 visual asset 표시
+- 녹음
+- Result
+- visual context 저장
+
+시나리오 7. 기존 기록
+
+- Sprint 4 형식 localStorage 로드
+- migration
+- 기존 기록 유지
+- Topic 필터 가능
+- Area를 확정할 수 없는 기록은 legacy 처리
+
+시나리오 8. 전체 회귀
+
+- Progress
+- History
+- Session Detail
+- Comparison
+- Settings
+- AI Coaching
+- Retry
+- 데이터 내보내기
+
+==================================================
+32. 인수 조건
+==================================================
+
+AC-01:
+기존 Sprint 기능이 유지된다.
+
+AC-02:
+Practice Setup에서 5개 Area가 표시된다.
+
+AC-03:
+Area 선택 후 사용 가능한 Topic만 표시된다.
+
+AC-04:
+기존 8개 카테고리가 Topic으로 사용된다.
+
+AC-05:
+사용자는 Area와 Topic을 모두 선택할 수 있다.
+
+AC-06:
+질문은 Area와 Topic 조건을 모두 만족한다.
+
+AC-07:
+모든 Question에 practiceArea, topic, practiceMode가 있다.
+
+AC-08:
+새 PracticeSession에 Area와 Topic이 저장된다.
+
+AC-09:
+Retry 시 Area와 Topic이 유지된다.
+
+AC-10:
+다음 문제는 같은 Area와 Topic에서 선택된다.
+
+AC-11:
+History에서 Area와 Topic을 확인할 수 있다.
+
+AC-12:
+Progress에서 Area별 통계를 확인할 수 있다.
+
+AC-13:
+Progress에서 Topic별 통계를 확인할 수 있다.
+
+AC-14:
+기존 기록이 삭제되지 않는다.
+
+AC-15:
+기존 AI Coaching과 metrics가 보존된다.
+
+AC-16:
+Area 4는 일반 질문 화면과 구분된다.
+
+AC-17:
+Area 4 Passage는 약 40~50초를 목표로 한다.
+
+AC-18:
+Area 4 Passage는 정확히 두 번 재생된다.
+
+AC-19:
+세 번째 재생은 차단된다.
+
+AC-20:
+Area 4 Passage 원문은 청취와 답변 중 표시되지 않는다.
+
+AC-21:
+두 번째 청취 전 Summary 녹음은 시작되지 않는다.
+
+AC-22:
+두 번째 청취 후 Summary 녹음이 가능하다.
+
+AC-23:
+Area 4 Retry는 Passage 청취부터 다시 시작한다.
+
+AC-24:
+Area 4 Attempt에 playbackCount가 저장된다.
+
+AC-25:
+Area 2 Follow-up 데이터가 지원된다.
+
+AC-26:
+Area 5 Visual Prompt가 지원된다.
+
+AC-27:
+존재하지 않는 이미지 asset을 표시하지 않는다.
+
+AC-28:
+공식 시험 Part 명칭이라고 오해하게 표현하지 않는다.
+
+AC-29:
+공식 기출문제를 제공한다고 표현하지 않는다.
+
+AC-30:
+npm run build가 성공한다.
+
+AC-31:
+npm run test가 성공한다.
+
+AC-32:
+lint가 있으면 npm run lint가 성공한다.
+
+AC-33:
+TypeScript 오류와 심각한 콘솔 오류가 없다.
+
+AC-34:
+모바일 320px에서 가로 스크롤이 발생하지 않는다.
+
+==================================================
+33. 구현 순서
+==================================================
+
+다음 순서대로 구현한다.
+
+Task 1. 전체 프로젝트 분석
+
+Task 2. Practice Area 및 Topic 타입 정의
+
+Task 3. practiceTaxonomy 중앙 설정 구현
+
+Task 4. SpeakingQuestion discriminated union 구현
+
+Task 5. 기존 questionBank migration
+
+Task 6. Area 2 follow-up 데이터 구조 추가
+
+Task 7. Area 4 listening passage 데이터 구조 추가
+
+Task 8. Area 5 visual prompt 데이터 구조 추가
+
+Task 9. questionUtils filter API 개편
+
+Task 10. PracticeSettings migration
+
+Task 11. App.tsx state와 handler 개편
+
+Task 12. PracticeSetupPage 2단계 선택 UI
+
+Task 13. QuestionReadyPage의 practiceMode 분기
+
+Task 14. Area 4 전용 Listening Flow
+
+Task 15. Area 5 Visual Prompt 표시
+
+Task 16. PracticeSession과 PracticeAttempt 확장
+
+Task 17. Retry 및 History Retry 개편
+
+Task 18. Progress와 History 집계 개편
+
+Task 19. 기존 저장 데이터 migration
+
+Task 20. 단위 테스트
+
+Task 21. 통합 테스트
+
+Task 22. 전체 회귀 테스트
+
+==================================================
+34. 최종 검증
+==================================================
+
+구현 후 다음 명령을 실행한다.
+
+npm install
+npm run build
+npm run test
+
+lint가 있으면 실행한다.
+
+npm run lint
+
+오류가 발생하면 원인을 수정한 뒤 다시 실행한다.
+
+최종 응답에는 다음을 정리한다.
+
+1. 분석한 현재 구조
+2. 수정한 App.tsx 상태와 handler
+3. 생성 또는 수정한 파일
+4. 5개 Practice Area 정의
+5. Topic 정의
+6. 기존 questionBank migration 결과
+7. Area와 Topic filtering 방식
+8. Area 4 Listening Flow
+9. Passage 길이 및 2회 재생 처리
+10. Session과 Attempt 변경사항
+11. 과거 데이터 migration 방식
+12. Progress 및 History 변경사항
+13. 테스트 결과
+14. 알려진 제한사항
+15. 다음 Sprint 추천 범위
+
+설명만 제공하지 말고 실제 프로젝트 파일을 수정하여 작동하는 기능을 완성하라.
+
+기존 프로젝트를 새로 만들거나 기존 Session, Attempt, Transcript, AI Coaching 및 Progress 데이터를 삭제하지 말라.
+
+Area 4 Passage 원문을 청취 또는 답변 화면에 표시하지 말라.
+
+실제 공식 SPA 기출문제를 복제하거나 공식 시험 서비스라고 표현하지 말라.

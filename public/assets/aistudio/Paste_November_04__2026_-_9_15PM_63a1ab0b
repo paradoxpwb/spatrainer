@@ -1,0 +1,1834 @@
+당신은 시니어 풀스택 개발자, 데이터 분석가, 영어 말하기 학습 서비스 UX 설계자다.
+
+기존 React + TypeScript 기반 웹앱인 "SPA Speaking Trainer"에 Sprint 4 기능을 구현하라.
+
+이 서비스는 현대자동차그룹 영어 말하기 시험인 SPA를 준비하는 사용자를 위한 비공식 연습 도구다. 공식 SPA 시험 서비스나 공식 채점 시스템이 아니며, 공식 시험 점수나 등급을 예측하지 않는다.
+
+Sprint 4의 목표는 Sprint 3에서 완성한 AI 코칭과 재연습 흐름을 확장하여 다음 경험을 제공하는 것이다.
+
+첫 번째 답변
+→ AI 코칭
+→ 동일 질문 재연습
+→ 첫 답변과 재도전 비교
+→ 개선한 항목 확인
+→ 개인 Progress Dashboard
+→ 다음 연습 추천
+
+이번 Sprint의 핵심 가치는 다음과 같다.
+
+"사용자가 점수 하나를 받는 것이 아니라, 첫 답변과 재도전 사이에서 무엇이 실제로 달라졌는지 확인하고 다음 연습 행동을 결정하도록 돕는다."
+
+==================================================
+1. 구현 전 필수 작업
+==================================================
+
+실제 코드를 수정하기 전에 현재 프로젝트를 먼저 분석하라.
+
+반드시 확인할 항목:
+
+1. 현재 파일 및 디렉터리 구조
+2. Sprint 1의 문제은행, 타이머, 녹음 구조
+3. Sprint 2의 Transcript, 측정 지표, PracticeAttempt 구조
+4. Sprint 3의 AI Coaching 결과 구조
+5. Retry Flow에서 새로운 attempt가 생성되는 방식
+6. localStorage key와 저장 형식
+7. 라우팅 및 화면 상태 관리 방식
+8. 기존 테스트 프레임워크
+9. 서버 API 구조
+10. 기존 UI 컴포넌트와 스타일 시스템
+
+분석 후 기존 구조에 맞춰 필요한 파일만 수정하거나 추가한다.
+
+금지 사항:
+
+- 새로운 프로젝트 생성
+- 기존 프로젝트 전체 재작성
+- 현재 정상 동작하는 기능 삭제
+- 기존 데이터 구조와 호환되지 않는 일방적 변경
+- 동일 기능을 수행하는 중복 컴포넌트 생성
+- 사용하지 않는 라이브러리 도입
+- 서버 없이 동작하는 기능을 불필요하게 서버로 이전
+
+==================================================
+2. 기존 Sprint 기능 유지
+==================================================
+
+다음 Sprint 1 기능을 유지한다.
+
+- Home
+- 문제 카테고리
+- 문제은행
+- 랜덤 문제 선택
+- 준비시간 설정
+- 답변시간 설정
+- 준비 타이머
+- 음성 녹음
+- 수동 및 자동 녹음 종료
+- 녹음 재생
+- 같은 문제 다시 연습
+- 다음 문제
+- 마이크 오류 처리
+- MediaStream cleanup
+- Object URL cleanup
+
+다음 Sprint 2 기능을 유지한다.
+
+- 음성 전사
+- Transcript 표시 및 수정
+- 수동 Transcript 입력
+- 녹음시간
+- 단어 수
+- WPM
+- 문장 수
+- 평균 문장 길이
+- 고유 단어 수
+- lexical diversity
+- filler 후보
+- 반복 단어
+- 반복 표현
+- 답변 길이 안내
+- 최근 연습 기록
+- 전사 실패 fallback
+- 오디오 비영구 저장
+
+다음 Sprint 3 기능을 유지한다.
+
+- AI Speaking Coach
+- Answer Relevance
+- Answer Structure
+- 강점
+- 우선 개선사항
+- 문법 교정
+- 표현 개선
+- Answer Outline
+- Improved Answer
+- Useful Expressions
+- Retry Checklist
+- 구조만 보고 연습
+- 개선 답변 참고
+- AI 요청 캐싱
+- Transcript 변경 감지
+- AI 결과 기록 저장
+- AI 오류 fallback
+
+Sprint 4 구현 후에도 모든 기존 기능이 정상 작동해야 한다.
+
+==================================================
+3. Sprint 4 구현 범위
+==================================================
+
+반드시 구현할 기능:
+
+A. 연습 세션과 Attempt 연결
+B. Attempt 1과 Retry Attempt 비교
+C. 객관적 지표 변화 계산
+D. Transcript 비교
+E. AI 코칭 목표 적용 여부 확인
+F. 개선 요약
+G. 재도전 결과 화면
+H. 개인 연습 목표
+I. Progress Dashboard
+J. 카테고리별 연습 현황
+K. 최근 활동과 연습 연속일
+L. 약점 및 다음 연습 추천
+M. 기록 목록, 상세 보기, 삭제
+N. 기존 localStorage 데이터 마이그레이션
+O. 데이터 내보내기 및 초기화
+P. 접근성, 모바일, 테스트
+Q. Sprint 1, 2, 3 회귀 테스트
+
+이번 Sprint에서 구현하지 않을 기능:
+
+- 공식 SPA 점수
+- 공식 SPA 등급
+- 합격 및 불합격 예측
+- 발음 점수
+- 억양 점수
+- 음소 분석
+- 목소리 자신감 평가
+- 실시간 AI 면접관
+- AI 후속 질문
+- Full Mock Test
+- TTS
+- 계정 및 로그인
+- 클라우드 동기화
+- 결제
+- 관리자 기능
+- 사용자 간 비교
+- 랭킹 또는 리더보드
+- 소셜 공유
+- 외부 분석 도구
+- 서버 데이터베이스
+
+==================================================
+4. Sprint 4 사용자 흐름
+==================================================
+
+핵심 흐름은 다음과 같다.
+
+1. 사용자가 질문에 첫 답변을 녹음한다.
+2. Sprint 2 지표를 확인한다.
+3. Sprint 3 AI 코칭을 확인한다.
+4. 사용자가 Retry Checklist와 Answer Outline을 확인한다.
+5. 동일 질문에 두 번째 답변을 녹음한다.
+6. 두 번째 답변을 전사하고 필요하면 수정한다.
+7. 두 번째 답변의 기본 지표를 계산한다.
+8. 필요하면 두 번째 답변에 AI 코칭을 요청한다.
+9. 첫 답변과 두 번째 답변을 비교한다.
+10. 개선된 항목, 유지된 강점, 추가 연습 항목을 확인한다.
+11. Progress Dashboard에서 누적 연습 현황을 확인한다.
+12. 추천 카테고리나 추천 질문으로 다음 연습을 시작한다.
+
+AI 코칭이 없는 기록도 지표 비교가 가능해야 한다.
+
+전사 API 또는 AI API가 실패하더라도 가능한 범위의 로컬 비교 기능은 정상 작동해야 한다.
+
+==================================================
+5. 데이터 모델 확장
+==================================================
+
+기존 PracticeAttempt 타입을 하위 호환되게 확장한다.
+
+권장 타입:
+
+interface PracticeSession {
+  id: string;
+  questionId: string;
+  question: string;
+  category: string;
+  difficulty: "basic" | "intermediate";
+  createdAt: string;
+  updatedAt: string;
+  attemptIds: string[];
+  originalAttemptId: string;
+  latestAttemptId: string;
+  status:
+    | "in-progress"
+    | "completed"
+    | "abandoned";
+}
+
+interface PracticeAttempt {
+  id: string;
+  sessionId?: string;
+  attemptNumber?: number;
+  parentAttemptId?: string;
+  retrySource?: "direct" | "feedback" | "history";
+
+  questionId: string;
+  category: string;
+  question: string;
+  recordedAt: string;
+  recordingDurationSeconds: number;
+  originalTranscript: string;
+  editedTranscript: string;
+  metrics: SpeakingMetrics;
+
+  aiCoaching?: ExistingAICoachingType;
+
+  retryContext?: {
+    mode: "outline-only" | "improved-answer" | "direct";
+    checklistItems: string[];
+    sourceCoachingAttemptId?: string;
+  };
+}
+
+interface AttemptComparison {
+  sessionId: string;
+  baseAttemptId: string;
+  comparedAttemptId: string;
+  generatedAt: string;
+
+  metricChanges: MetricChange[];
+  transcriptChanges: TranscriptComparison;
+  checklistResults: ChecklistResult[];
+  summary: ComparisonSummary;
+}
+
+interface MetricChange {
+  metric:
+    | "recording-duration"
+    | "total-words"
+    | "words-per-minute"
+    | "filler-count"
+    | "filler-rate"
+    | "unique-words"
+    | "lexical-diversity"
+    | "repeated-words"
+    | "repeated-phrases";
+
+  previousValue: number;
+  currentValue: number;
+  absoluteChange: number;
+  percentageChange: number | null;
+  direction: "increased" | "decreased" | "unchanged";
+  interpretation:
+    | "improved"
+    | "needs-review"
+    | "neutral";
+}
+
+interface TranscriptComparison {
+  addedSentences: string[];
+  removedSentences: string[];
+  retainedSentences: string[];
+  addedKeyTerms: string[];
+  removedKeyTerms: string[];
+  similarityPercentage: number;
+}
+
+interface ChecklistResult {
+  instruction: string;
+  status:
+    | "likely-applied"
+    | "not-confirmed"
+    | "not-applicable";
+  evidence?: string;
+  explanation: string;
+}
+
+interface ComparisonSummary {
+  improvedAreas: string[];
+  maintainedStrengths: string[];
+  areasToContinue: string[];
+  recommendedNextAction: string;
+}
+
+기존 PracticeAttempt에 새 필드가 없어도 정상적으로 로드되어야 한다.
+
+==================================================
+6. 데이터 버전과 마이그레이션
+==================================================
+
+localStorage 데이터에 schema version을 추가한다.
+
+예:
+
+interface StoredPracticeData {
+  schemaVersion: number;
+  attempts: PracticeAttempt[];
+  sessions: PracticeSession[];
+  goals: PracticeGoal[];
+  preferences: UserPreferences;
+}
+
+현재 Sprint 4 schema version 예:
+
+4
+
+마이그레이션 함수를 별도 파일로 구현한다.
+
+권장 경로:
+
+src/utils/storageMigrations.ts
+
+마이그레이션 요구사항:
+
+1. Sprint 2 형식의 attempt를 읽을 수 있어야 한다.
+2. Sprint 3 형식의 aiCoaching 필드를 유지해야 한다.
+3. sessionId가 없는 기존 attempt에 안전한 session을 생성해야 한다.
+4. 같은 questionId라도 연습 날짜가 크게 다르면 자동으로 하나의 세션으로 합치지 않는다.
+5. 명확한 parent 관계가 없는 과거 기록을 임의로 Retry 관계로 만들지 않는다.
+6. 기존 데이터를 삭제하지 않는다.
+7. 마이그레이션 실패 시 원본 데이터를 보존한다.
+8. 마이그레이션 결과를 런타임 검증한다.
+9. 손상된 항목만 제외하고 정상 항목은 최대한 복구한다.
+10. 마이그레이션 실패가 앱 전체 오류로 이어지지 않게 한다.
+
+기존 attempt의 관계를 확정할 수 없다면 각각 독립 세션으로 변환한다.
+
+==================================================
+7. Session과 Attempt 생성 규칙
+==================================================
+
+새로운 질문 연습을 시작하면 PracticeSession을 생성한다.
+
+첫 답변:
+
+- 새로운 sessionId 생성
+- attemptNumber: 1
+- parentAttemptId 없음
+- originalAttemptId에 첫 답변 ID 저장
+
+동일 질문 Retry:
+
+- 기존 sessionId 유지
+- attemptNumber 증가
+- parentAttemptId에 직전 attempt ID 저장
+- retrySource 기록
+- retryContext 기록
+- latestAttemptId 업데이트
+
+다음 문제:
+
+- 새로운 PracticeSession 생성
+- 기존 세션과 연결하지 않음
+
+같은 문제라도 Home이나 문제은행에서 독립적으로 다시 시작한 경우:
+
+- 기본적으로 새로운 PracticeSession 생성
+- 과거 세션에 자동 연결하지 않음
+
+하나의 세션에서 최대 5개의 attempt까지만 UI에 기본 표시한다.
+
+5개를 초과하는 Retry를 완전히 차단하지는 않되, 비교 화면에서는 사용자가 기준 attempt와 비교 attempt를 선택할 수 있게 한다.
+
+==================================================
+8. Attempt 비교 기준
+==================================================
+
+기본 비교는 다음과 같다.
+
+- 기준: 해당 세션의 Attempt 1
+- 비교: 가장 최근 Attempt
+
+사용자는 다음 비교도 선택할 수 있다.
+
+- Attempt 1 vs Attempt 2
+- Attempt 1 vs 최신
+- 직전 Attempt vs 최신
+- 직접 두 Attempt 선택
+
+동일 질문과 동일 세션에 속한 Attempt만 비교한다.
+
+서로 다른 질문은 직접 비교하지 않는다.
+
+비교할 수 없는 경우 다음 메시지를 표시한다.
+
+"동일한 질문에 대한 답변이 두 개 이상 있어야 비교할 수 있습니다."
+
+==================================================
+9. 객관적 지표 비교
+==================================================
+
+다음 지표의 변화를 로컬 TypeScript 코드로 계산한다.
+
+- Recording Time
+- Total Words
+- Words per Minute
+- Total Filler Candidates
+- Filler Rate per 100 Words
+- Unique Word Count
+- Lexical Diversity
+- Repeated Word Count
+- Repeated Phrase Count
+
+공식:
+
+absoluteChange = currentValue - previousValue
+
+percentageChange =
+  previousValue가 0이 아니면
+  absoluteChange / previousValue × 100
+
+previousValue가 0이면 percentageChange는 null로 처리한다.
+
+NaN 또는 Infinity를 표시하지 않는다.
+
+==================================================
+10. 개선 판단 규칙
+==================================================
+
+모든 증가 또는 감소를 자동으로 개선이라고 판단하지 않는다.
+
+다음 규칙을 사용한다.
+
+Recording Time:
+
+- 증가했다고 무조건 개선이 아님
+- very-short에서 short 또는 balanced로 이동하면 긍정적
+- balanced에서 excessively long으로 이동하면 검토 필요
+- 질문과 답변 제한시간을 함께 고려
+
+Total Words:
+
+- 매우 짧은 답변에서 적절한 길이로 증가하면 긍정적
+- 단어 수만 증가하고 반복 표현도 증가하면 중립 또는 검토 필요
+
+WPM:
+
+- Sprint 2에서 정의한 참고 범위를 사용
+- 약 110에서 149 WPM이면 일반적인 연습 범위로 표시 가능
+- 범위에 가까워지면 긍정적
+- 이미 일반 범위인데 더 증가했다고 추가 개선으로 단정하지 않음
+- 150 이상으로 크게 증가하면 명료도 확인이 필요하다고 표시
+- 공식 SPA 기준이라고 표현하지 않음
+
+Filler Count:
+
+- 절대 개수보다 100단어당 filler 비율을 우선 사용
+- filler 비율이 감소하면 긍정적
+- Transcript 편집으로 filler가 삭제됐을 가능성을 한계로 안내
+
+Unique Words와 Lexical Diversity:
+
+- 증가하면 참고상 긍정적으로 표시할 수 있음
+- 답변 길이 차이에 민감하다는 설명 제공
+- 작은 변화는 의미 있는 향상으로 과장하지 않음
+
+Repeated Words와 Phrases:
+
+- 감소하면 긍정적일 수 있음
+- 핵심 단어 반복은 자연스러울 수 있으므로 오류라고 단정하지 않음
+
+변화가 너무 작으면 unchanged 또는 neutral로 처리한다.
+
+권장 허용 오차:
+
+- WPM: ±5 이내는 큰 변화 없음
+- Filler Rate: ±0.5 이내는 큰 변화 없음
+- Lexical Diversity: ±0.03 이내는 큰 변화 없음
+- Recording Time: ±3초 이내는 큰 변화 없음
+
+이 값들은 내부 연습용 기준이며 공식 SPA 평가 기준이 아니다.
+
+==================================================
+11. 비교 결과 UI
+==================================================
+
+새 화면 또는 섹션을 구현한다.
+
+화면명:
+
+"Attempt Comparison"
+
+상단 표시:
+
+- 질문
+- 카테고리
+- 기준 Attempt
+- 비교 Attempt
+- 녹음 날짜
+- 각 Attempt의 오디오 재생 가능 여부
+
+오디오 URL은 페이지 새로고침 후 유지되지 않을 수 있으므로 존재할 때만 플레이어를 표시한다.
+
+오디오가 없으면 다음처럼 표시한다.
+
+"이 기록에는 저장된 오디오가 없습니다."
+
+주요 요약 카드:
+
+1. Speaking Time
+2. Total Words
+3. WPM
+4. Filler Rate
+
+보조 비교:
+
+- Unique Words
+- Lexical Diversity
+- Repeated Words
+- Repeated Phrases
+
+각 카드에 표시:
+
+- 이전 값
+- 현재 값
+- 변화량
+- 해석
+- 짧은 안내
+
+공식 점수판처럼 보이지 않게 한다.
+
+==================================================
+12. Transcript 비교
+==================================================
+
+두 Transcript의 변화를 로컬에서 비교한다.
+
+구현 범위:
+
+- 추가된 문장
+- 제거된 문장
+- 유지된 문장
+- 새로 사용한 핵심 단어
+- 사라진 핵심 단어
+- 전체 텍스트 유사도
+
+외부 diff 라이브러리를 사용할 수 있지만, 프로젝트 규모에 비해 과도한 라이브러리는 도입하지 않는다.
+
+단순하고 안정적인 문장 및 단어 단위 비교를 우선한다.
+
+Transcript 비교 UI:
+
+- Attempt 1 Transcript
+- Retry Transcript
+- 추가된 내용
+- 제외된 내용
+- 공통 내용
+
+모바일에서는 좌우 비교가 아니라 세로 배치를 사용한다.
+
+색상만으로 추가 및 삭제를 전달하지 않는다.
+
+다음 텍스트 라벨을 함께 표시한다.
+
+- Added
+- Removed
+- Retained
+
+Transcript 수정으로 발생한 차이일 수 있다는 안내를 표시한다.
+
+==================================================
+13. 체크리스트 적용 여부
+==================================================
+
+Sprint 3에서 생성된 Retry Checklist가 있으면 Retry Transcript에서 적용 여부를 확인한다.
+
+기본적으로 로컬 규칙으로 확인 가능한 항목과 AI가 필요한 항목을 구분한다.
+
+로컬에서 확인 가능한 예:
+
+- 특정 연결어 사용
+- 예시 표현 사용
+- 답변 길이 증가
+- filler 비율 감소
+- 반복 단어 감소
+- 결과 표현 사용
+
+로컬에서 확실히 판단하기 어려운 예:
+
+- 이유가 충분히 설득력 있는지
+- 예시가 질문과 적절히 연결됐는지
+- 구조가 논리적으로 향상됐는지
+
+로컬 판단 상태:
+
+- likely-applied
+- not-confirmed
+- not-applicable
+
+"실패"라는 표현은 사용하지 않는다.
+
+로컬 규칙으로 확실히 판단할 수 없는 항목은 not-confirmed로 둔다.
+
+AI 비교 기능을 구현할 경우 반드시 별도 명시적 버튼으로 실행하고, Sprint 3 AI Provider를 재사용한다.
+
+버튼 예:
+
+"AI로 변화 자세히 분석하기"
+
+이 기능은 선택 사항이며 자동 실행하지 않는다.
+
+AI 비교를 구현하는 경우 한 번의 요청으로 다음만 생성한다.
+
+- 적용된 개선사항
+- 유지된 강점
+- 계속 연습할 항목
+- 다음 답변 행동 1개
+
+AI 비교에서도 공식 점수나 발음 평가를 생성하지 않는다.
+
+==================================================
+14. 비교 요약
+==================================================
+
+로컬 지표와 체크리스트 결과를 바탕으로 기본 Comparison Summary를 생성한다.
+
+표시 영역:
+
+- Improved Areas
+- Maintained Strengths
+- Continue Practicing
+- Recommended Next Action
+
+예:
+
+Improved Areas:
+- 답변 시간이 24초에서 47초로 늘어 구체적인 설명이 추가되었습니다.
+- 100단어당 filler 후보가 8.2개에서 4.1개로 감소했습니다.
+
+Maintained Strengths:
+- 두 답변 모두 질문에 대한 의견을 첫 부분에서 제시했습니다.
+
+Continue Practicing:
+- "important"가 여전히 여러 번 반복되었습니다.
+
+Recommended Next Action:
+- 다음 답변에서 "important" 대신 "valuable", "essential", "helpful" 중 문맥에 맞는 표현을 한 번 사용해 보세요.
+
+확실한 데이터가 없으면 해당 항목을 비워둘 수 있다.
+
+근거 없이 개선되었다고 주장하지 않는다.
+
+==================================================
+15. 개인 연습 목표
+==================================================
+
+개인 연습 목표 기능을 구현한다.
+
+목표 유형:
+
+- 주간 연습 횟수
+- 주간 연습 일수
+- Retry 완료 횟수
+- 특정 카테고리 연습 횟수
+- 답변 길이 목표
+- filler 비율 개선 목표
+
+기본 추천 목표:
+
+- 주간 연습 3회
+- 주간 2일 이상 연습
+- 주간 Retry 1회
+
+사용자는 목표를 변경할 수 있다.
+
+제한:
+
+- 주간 연습 횟수: 1~30
+- 주간 연습 일수: 1~7
+- Retry 목표: 0~20
+- 카테고리 연습 목표: 1~20
+
+목표는 localStorage에 저장한다.
+
+목표 진행률:
+
+- 현재 값
+- 목표 값
+- 진행률
+- 남은 수량
+
+진행률은 100%를 초과해도 UI 막대는 100%에서 제한하지만 실제 값은 표시할 수 있다.
+
+목표 미달을 부정적으로 표현하지 않는다.
+
+예:
+
+"이번 주 목표까지 연습 1회가 남았습니다."
+
+==================================================
+16. Progress Dashboard
+==================================================
+
+Home 또는 별도 Progress 화면에 Dashboard를 구현한다.
+
+기간 필터:
+
+- 최근 7일
+- 최근 30일
+- 전체
+
+기본값:
+
+- 최근 7일
+
+Dashboard 핵심 지표:
+
+1. 총 답변 수
+2. 완료한 연습 세션 수
+3. Retry 완료 수
+4. 연습한 날짜 수
+5. 총 녹음시간
+6. 평균 답변시간
+7. 평균 WPM
+8. 평균 filler rate
+
+평균 계산 시:
+
+- 유효한 데이터만 포함
+- 0초 녹음 제외
+- Transcript가 없는 attempt는 텍스트 기반 평균에서 제외
+- 유효 표본 수가 너무 적으면 과도한 결론을 표시하지 않음
+
+최근 7일 데이터가 없으면 30일 데이터를 자동으로 대신 사용하지 않는다.
+
+빈 상태를 명확하게 표시한다.
+
+"선택한 기간에 연습 기록이 없습니다."
+
+==================================================
+17. 추세 표시
+==================================================
+
+다음 지표의 단순 추세를 표시한다.
+
+- 답변시간
+- WPM
+- filler rate
+- total words
+- Retry 횟수
+
+차트 라이브러리가 기존 프로젝트에 없다면 무거운 라이브러리를 새로 추가하지 않는다.
+
+우선순위:
+
+1. 접근 가능한 CSS 또는 SVG 기반 간단한 그래프
+2. 기존에 설치된 차트 라이브러리
+3. 필요할 경우 가벼운 차트 라이브러리
+
+차트 요구사항:
+
+- 날짜 순 정렬
+- 데이터가 없는 날짜를 임의의 0으로 해석하지 않음
+- tooltip 또는 데이터 라벨
+- 키보드 접근 가능한 대체 목록
+- 색상만으로 계열 구분 금지
+- 모바일 가로 스크롤 최소화
+- 최소 2개 데이터 포인트가 있어야 추세 표시
+
+데이터가 1개뿐이면:
+
+"추세를 확인하려면 연습 기록이 한 개 더 필요합니다."
+
+추세를 공식 능력 향상으로 표현하지 않는다.
+
+==================================================
+18. 카테고리별 분석
+==================================================
+
+8개 카테고리에 대해 다음을 표시한다.
+
+- 연습 횟수
+- 마지막 연습일
+- Retry 횟수
+- 평균 답변시간
+- 평균 WPM
+- 평균 filler rate
+- AI 코칭에서 자주 나온 개선 주제
+
+AI 코칭 개선 주제는 저장된 priorityImprovements 또는 관련 구조화 데이터를 집계한다.
+
+자유 텍스트를 그대로 단순 집계하지 않는다.
+
+가능하면 다음과 같은 내부 태그를 추가한다.
+
+type ImprovementTag =
+  | "add-example"
+  | "clarify-main-point"
+  | "explain-reason"
+  | "add-result"
+  | "improve-structure"
+  | "reduce-repetition"
+  | "grammar-tense"
+  | "grammar-article"
+  | "grammar-preposition"
+  | "use-specific-vocabulary"
+  | "answer-all-parts"
+  | "other";
+
+Sprint 3 AI 응답에 태그가 없다면 기존 기록을 억지로 분류하지 않는다.
+
+새 코칭 결과부터 improvementTags를 받을 수 있도록 schema를 확장하되 기존 응답과 호환되게 optional로 처리한다.
+
+==================================================
+19. 연습 연속일과 활동 캘린더
+==================================================
+
+다음 정보를 계산한다.
+
+- 현재 연속 연습일
+- 최장 연속 연습일
+- 최근 30일 연습일
+- 날짜별 완료한 attempt 수
+
+연속일 계산 원칙:
+
+- 사용자의 로컬 날짜 기준
+- 하루에 한 번 이상 완료된 attempt가 있으면 연습일로 계산
+- 같은 날 여러 번 연습해도 연속일은 하루로 계산
+- 자정과 timezone 처리 시 ISO timestamp를 로컬 날짜로 변환
+- 미래 날짜와 잘못된 날짜는 제외
+
+사용자의 현재 시스템 timezone을 사용한다.
+
+외부 서버 timezone에 의존하지 않는다.
+
+활동 캘린더는 선택 사항이지만 구현할 경우 접근 가능한 텍스트 대체 정보를 제공한다.
+
+게이미피케이션을 과도하게 사용하지 않는다.
+
+==================================================
+20. 약점 및 추천 로직
+==================================================
+
+다음 연습 추천은 우선 로컬 규칙으로 생성한다.
+
+추천 입력:
+
+- 최근 연습이 적은 카테고리
+- 최근 AI 개선 태그
+- Retry를 하지 않은 세션
+- 최근 filler rate
+- 매우 짧은 답변 비중
+- 반복 표현 빈도
+- 마지막 연습일
+
+추천 우선순위 예:
+
+1. 최근 30일 동안 연습하지 않은 카테고리
+2. 최근 코칭에서 2회 이상 반복된 개선 태그
+3. 첫 답변만 있고 Retry가 없는 최근 세션
+4. 매우 짧은 답변이 많이 발생한 카테고리
+5. 사용자가 설정한 카테고리 목표
+
+최대 3개의 추천만 표시한다.
+
+추천 예:
+
+- 문제 해결 카테고리를 최근 30일 동안 연습하지 않았습니다.
+- 최근 답변에서 구체적인 결과 설명이 자주 개선사항으로 나타났습니다.
+- 아직 재도전하지 않은 직장생활 질문이 2개 있습니다.
+
+각 추천에는 실행 버튼을 제공한다.
+
+- 이 카테고리 연습
+- 이전 질문 다시 연습
+- Retry 시작
+
+추천은 공식적인 약점 진단이 아니라 기록 기반 학습 제안으로 표시한다.
+
+==================================================
+21. 기록 목록과 상세 화면
+==================================================
+
+History 화면을 구현하거나 기존 최근 기록 영역을 확장한다.
+
+필터:
+
+- 기간
+- 카테고리
+- Retry 여부
+- AI 코칭 여부
+
+정렬:
+
+- 최신순
+- 오래된순
+- Attempt 수가 많은 세션순
+
+기록 목록 표시:
+
+- 날짜
+- 카테고리
+- 질문
+- Attempt 수
+- 마지막 WPM
+- 마지막 filler rate
+- AI 코칭 여부
+
+기록 상세:
+
+- 질문
+- 각 Attempt
+- Transcript
+- 객관적 지표
+- AI 코칭 결과
+- 비교 화면 이동
+- 동일 질문 다시 연습
+- 세션 삭제
+
+오디오가 영구 저장되지 않았음을 명확하게 표시한다.
+
+==================================================
+22. 기록 삭제와 전체 초기화
+==================================================
+
+개별 세션 삭제 기능을 구현한다.
+
+삭제 전 확인 대화상자:
+
+"이 연습 세션과 연결된 모든 답변 기록을 삭제하시겠습니까? 삭제한 기록은 복구할 수 없습니다."
+
+삭제 범위:
+
+- PracticeSession
+- 연결된 PracticeAttempt
+- 연결된 비교 캐시
+
+다른 세션은 삭제하지 않는다.
+
+전체 데이터 초기화 기능도 설정 화면에 제공한다.
+
+확인 절차:
+
+1. 초기화 버튼
+2. 경고 대화상자
+3. 사용자가 "초기화" 텍스트 입력
+4. 최종 확인
+
+전체 초기화 대상:
+
+- practice attempts
+- sessions
+- goals
+- dashboard preferences
+- comparison cache
+
+유지할 수 있는 항목:
+
+- 준비시간 설정
+- 답변시간 설정
+- 피드백 언어
+
+유지 여부를 UI에 명확히 표시한다.
+
+==================================================
+23. 데이터 내보내기
+==================================================
+
+사용자가 자신의 연습 기록을 JSON으로 내보낼 수 있게 한다.
+
+내보내기 포함 항목:
+
+- schemaVersion
+- exportedAt
+- sessions
+- attempts
+- goals
+- preferences
+
+제외 항목:
+
+- 오디오 Blob
+- Object URL
+- MediaStream
+- MediaRecorder
+- API 키
+- 시스템 프롬프트
+- 서버 내부 정보
+- 비검증 Provider 원본 응답
+
+파일명 예:
+
+spa-speaking-trainer-backup-YYYY-MM-DD.json
+
+내보내기 전 안내:
+
+"내보내기 파일에는 질문, Transcript, 말하기 지표 및 저장된 AI 코칭 결과가 포함될 수 있습니다. 개인적인 답변 내용이 포함되었는지 확인한 후 안전하게 보관하세요."
+
+이번 Sprint에서는 가져오기 기능은 선택 사항이다.
+
+가져오기를 구현하는 경우:
+
+- JSON schema 검증
+- schema version 확인
+- 현재 데이터 덮어쓰기 여부 확인
+- 중복 ID 처리
+- 손상된 파일 거부
+- 실행 전 백업 권고
+- HTML 또는 실행 코드 포함 여부와 무관하게 일반 데이터로만 처리
+- 사용자에게 덮어쓰기 또는 병합 선택 제공
+
+==================================================
+24. AI 비교 분석 선택 기능
+==================================================
+
+AI 기반 Attempt 비교는 선택 기능으로 구현할 수 있다.
+
+자동 호출하지 않는다.
+
+사용자가 다음 버튼을 눌렀을 때만 실행한다.
+
+"AI로 변화 자세히 분석하기"
+
+입력:
+
+- question
+- baseTranscript
+- retryTranscript
+- baseMetrics
+- retryMetrics
+- originalPriorityImprovements
+- originalRetryChecklist
+- feedbackLanguage
+
+출력:
+
+interface AIRetryComparison {
+  appliedImprovements: Array<{
+    title: string;
+    evidence: string;
+    explanation: string;
+  }>;
+
+  maintainedStrengths: Array<{
+    title: string;
+    evidence: string;
+  }>;
+
+  remainingPriorities: Array<{
+    title: string;
+    action: string;
+    evidence?: string;
+  }>;
+
+  nextAction: string;
+  limitations: string[];
+}
+
+AI 지침:
+
+- 두 Transcript만 비교
+- 발음이나 억양 평가 금지
+- 공식 점수 또는 등급 금지
+- 첫 답변을 무조건 낮게 평가하지 않음
+- Retry를 무조건 개선됐다고 판단하지 않음
+- 구체적인 Transcript 근거 사용
+- 없는 변화를 만들어내지 않음
+- JSON으로만 응답
+- Sprint 3 Provider adapter와 schema 검증 구조 재사용
+
+동일 비교 요청은 캐싱한다.
+
+cache key:
+
+- baseAttemptId
+- comparedAttemptId
+- 두 Transcript hash
+- feedbackLanguage
+- promptVersion
+
+==================================================
+25. 서버 호출 최소화
+==================================================
+
+다음 기능은 클라이언트에서 계산한다.
+
+- 시도 연결
+- metric change
+- percentage change
+- trend
+- streak
+- 목표 진행률
+- 카테고리 집계
+- Transcript 기본 diff
+- 로컬 추천
+- History 필터 및 정렬
+
+서버 또는 AI 호출이 가능한 기능:
+
+- 선택적 AI Retry Comparison
+
+자동 AI 호출 금지:
+
+- Dashboard 진입
+- 기록 목록 진입
+- 비교 화면 진입
+- Retry 완료
+- 앱 시작
+- 기간 필터 변경
+
+AI는 사용자 클릭 때만 호출한다.
+
+==================================================
+26. 권장 파일 구조
+==================================================
+
+기존 구조를 먼저 확인한 후 필요한 파일만 추가한다.
+
+권장 구조:
+
+src/
+  components/
+    comparison/
+      AttemptSelector.tsx
+      ComparisonSummary.tsx
+      MetricComparisonCard.tsx
+      TranscriptComparison.tsx
+      ChecklistResults.tsx
+      AIComparisonPanel.tsx
+    progress/
+      ProgressSummary.tsx
+      GoalProgress.tsx
+      TrendChart.tsx
+      CategoryProgress.tsx
+      ActivitySummary.tsx
+      RecommendationList.tsx
+    history/
+      HistoryFilters.tsx
+      SessionList.tsx
+      SessionDetail.tsx
+      DeleteSessionDialog.tsx
+    settings/
+      ExportData.tsx
+      ResetData.tsx
+
+  hooks/
+    usePracticeSessions.ts
+    useAttemptComparison.ts
+    useProgressAnalytics.ts
+    usePracticeGoals.ts
+    usePracticeHistory.ts
+
+  pages/
+    ComparisonPage.tsx
+    ProgressPage.tsx
+    HistoryPage.tsx
+    SessionDetailPage.tsx
+    SettingsPage.tsx
+
+  services/
+    retryComparisonService.ts
+
+  types/
+    practiceSession.ts
+    comparison.ts
+    progress.ts
+    goals.ts
+
+  utils/
+    attemptComparison.ts
+    transcriptComparison.ts
+    progressAnalytics.ts
+    recommendationEngine.ts
+    streakCalculator.ts
+    storageMigrations.ts
+    dataExport.ts
+
+기존 파일과 역할이 겹치면 새 파일을 만들지 말고 기존 파일을 확장한다.
+
+==================================================
+27. Progress 계산 함수
+==================================================
+
+Progress 계산은 테스트 가능한 순수 함수로 작성한다.
+
+필수 함수 예:
+
+createPracticeSession()
+attachAttemptToSession()
+compareMetrics()
+compareTranscripts()
+calculateProgressSummary()
+calculateCategoryStats()
+calculateStreak()
+calculateGoalProgress()
+generateRecommendations()
+migrateStoredData()
+exportPracticeData()
+
+모든 함수에서 다음을 안전하게 처리한다.
+
+- 빈 배열
+- 누락된 optional 필드
+- 잘못된 날짜
+- 0으로 나누기
+- NaN
+- Infinity
+- 음수 기록시간
+- 손상된 localStorage 데이터
+- 중복 ID
+- 미래 날짜
+- 이전 schema 데이터
+
+==================================================
+28. 디자인 요구사항
+==================================================
+
+현재 Sprint 1부터 3까지의 디자인 시스템을 유지한다.
+
+Sprint 4 디자인 원칙:
+
+- 성적표보다 학습 기록에 가까운 디자인
+- 변화와 다음 행동을 쉽게 이해할 수 있는 구조
+- 숫자를 과도하게 강조하지 않음
+- 개선되지 않은 지표를 실패처럼 표시하지 않음
+- 차트보다 핵심 설명을 우선
+- 카드 수를 불필요하게 늘리지 않음
+- 기업 교육 서비스에 적합한 전문적인 톤
+- 과도한 배지, 별, 불꽃 아이콘 사용 금지
+
+색상:
+
+- 긍정적 변화: 접근 가능한 그린 또는 블루
+- 검토 필요: 앰버 계열
+- 중립: 그레이 또는 블루 그레이
+- 삭제: 레드
+
+색상만으로 상태를 전달하지 않는다.
+
+텍스트 라벨과 아이콘을 함께 사용한다.
+
+==================================================
+29. 접근성
+==================================================
+
+다음을 준수한다.
+
+- 모든 차트에 텍스트 대체 정보 제공
+- 기간 필터에 명확한 label
+- Attempt selector에 label 제공
+- 변화 상태를 색상과 텍스트로 함께 표시
+- 삭제 대화상자 focus trap 또는 적절한 dialog 처리
+- 오류에 role="alert"
+- 동적 계산 완료에 aria-live 사용
+- 키보드로 필터와 accordion 사용 가능
+- 버튼 최소 44px 터치 영역
+- focus-visible 스타일
+- 모바일 320px에서 가로 스크롤 방지
+- 비교 테이블 대신 모바일 세로 카드 사용
+- 긴 질문과 Transcript 줄바꿈 처리
+
+==================================================
+30. 개인정보 및 투명성
+==================================================
+
+Progress 화면과 내보내기 화면에는 다음 취지의 안내를 표시한다.
+
+"Progress는 이 브라우저에 저장된 연습 기록을 바탕으로 계산됩니다. 공식 SPA 평가나 다른 사용자와의 비교 결과가 아닙니다."
+
+데이터 내보내기 화면:
+
+"내보내기 파일에는 사용자가 말한 내용의 Transcript와 AI 코칭 결과가 포함될 수 있습니다."
+
+저장 관련:
+
+- localStorage 저장 사실 명시
+- 오디오가 영구 저장되지 않는다는 점 명시
+- 브라우저 데이터 삭제 시 기록이 사라질 수 있음을 명시
+- 로그인과 클라우드 동기화가 없음을 명시
+
+==================================================
+31. 오류 및 빈 상태
+==================================================
+
+다음 빈 상태를 구현한다.
+
+Progress 기록 없음:
+
+"아직 분석할 연습 기록이 없습니다. 첫 번째 질문으로 연습을 시작해 보세요."
+
+Retry 없음:
+
+"동일한 질문에 다시 답하면 첫 답변과 변화를 비교할 수 있습니다."
+
+선택 기간 데이터 없음:
+
+"선택한 기간에 연습 기록이 없습니다."
+
+AI 코칭 없음:
+
+"이 답변에는 저장된 AI 코칭 결과가 없습니다."
+
+비교 불가:
+
+"비교할 수 있는 두 개의 답변이 없습니다."
+
+마이그레이션 일부 실패:
+
+"일부 이전 기록을 불러오지 못했습니다. 정상적으로 확인된 기록만 표시합니다."
+
+저장 실패:
+
+"연습 기록을 브라우저에 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요."
+
+앱 전체가 중단되지 않게 한다.
+
+==================================================
+32. 테스트 요구사항
+==================================================
+
+기존 테스트 프레임워크를 유지한다.
+
+없다면 Vitest를 사용한다.
+
+필수 단위 테스트:
+
+A. Session 연결
+
+- 첫 Attempt로 새 Session 생성
+- Retry가 동일 Session에 연결
+- 다음 문제는 새 Session 생성
+- attemptNumber 증가
+- parentAttemptId 연결
+
+B. Metric 비교
+
+- 증가
+- 감소
+- 동일
+- 이전 값 0
+- 현재 값 0
+- NaN 및 Infinity 방지
+- 허용 오차 적용
+
+C. 개선 해석
+
+- filler rate 감소
+- WPM 일반 범위 진입
+- WPM 과도한 증가
+- 답변 길이 very-short에서 balanced로 변경
+- 단어 수 증가와 반복 표현 동시 증가
+
+D. Transcript 비교
+
+- 동일 Transcript
+- 문장 추가
+- 문장 삭제
+- 단어 변경
+- 빈 Transcript
+- 구두점 차이
+- 대소문자 차이
+
+E. Streak
+
+- 연속 날짜
+- 같은 날 여러 Attempt
+- 하루 누락
+- timezone 경계
+- 잘못된 날짜
+- 미래 날짜
+
+F. 목표 진행률
+
+- 목표 미달
+- 목표 달성
+- 목표 초과
+- 목표 0 방지
+- 잘못된 범위
+
+G. 추천 로직
+
+- 미연습 카테고리
+- 반복 개선 태그
+- Retry 없는 세션
+- 기록 없음
+- 추천 최대 3개
+
+H. 마이그레이션
+
+- Sprint 2 데이터
+- Sprint 3 데이터
+- Sprint 4 데이터
+- 손상된 JSON
+- optional 필드 누락
+- 중복 ID
+- aiCoaching 보존
+
+I. 삭제
+
+- 단일 Session 삭제
+- 연결된 Attempt만 삭제
+- 다른 Session 유지
+- 비교 캐시 삭제
+
+J. 내보내기
+
+- 민감한 런타임 데이터 제외
+- 오디오 제외
+- API 키 제외
+- 올바른 schemaVersion
+- ISO export timestamp
+
+==================================================
+33. 통합 테스트 시나리오
+==================================================
+
+시나리오 1. 첫 답변과 Retry 비교
+
+- 질문 선택
+- 첫 답변 녹음
+- 전사 및 지표 생성
+- AI 코칭
+- 구조만 보고 재연습
+- 두 번째 답변 녹음
+- 전사 및 지표 생성
+- Attempt Comparison 확인
+
+시나리오 2. 객관적 지표 변화
+
+- 첫 답변과 Retry에 다른 WPM 설정
+- filler rate 차이 설정
+- 비교 계산 확인
+- NaN 또는 Infinity 없음 확인
+
+시나리오 3. Transcript 비교
+
+- Retry에 예시 문장 추가
+- Added 문장 표시
+- 공통 문장 표시
+- 모바일 세로 레이아웃 확인
+
+시나리오 4. AI 없이 비교
+
+- AI Provider 미설정
+- 두 Attempt 생성
+- 로컬 지표 비교 정상 작동
+- AI 비교만 설정 안내 표시
+
+시나리오 5. Progress Dashboard
+
+- 여러 날짜와 카테고리의 기록 생성
+- 7일 필터
+- 30일 필터
+- 전체 필터
+- 각 집계 값 확인
+
+시나리오 6. 연속일
+
+- 연속 3일 기록
+- 같은 날 다수 기록
+- current streak와 longest streak 확인
+
+시나리오 7. 추천
+
+- 미연습 카테고리 존재
+- Retry 없는 세션 존재
+- 추천 최대 3개 표시
+- 추천 버튼으로 연습 시작
+
+시나리오 8. 과거 기록 마이그레이션
+
+- Sprint 2 형식 localStorage
+- 앱 실행
+- 데이터 마이그레이션
+- 기존 Transcript와 지표 보존
+- 앱 오류 없음
+
+시나리오 9. 기록 삭제
+
+- 한 Session 삭제
+- 연결된 Attempt 삭제
+- 다른 Session 유지
+- Dashboard 재계산
+
+시나리오 10. JSON 내보내기
+
+- 연습 기록 내보내기
+- Transcript 포함 확인
+- 오디오 Blob 미포함 확인
+- API 키 미포함 확인
+
+시나리오 11. 회귀 테스트
+
+- Sprint 1 녹음
+- Sprint 2 전사와 지표
+- Sprint 3 AI 코칭
+- Sprint 4 Retry 비교
+- 전체 연결 흐름 확인
+
+==================================================
+34. 세부 작업 순서
+==================================================
+
+다음 순서로 구현한다.
+
+Task 1. 기존 프로젝트 분석
+- Sprint 1, 2, 3 파일 및 타입 확인
+- localStorage 구조 확인
+- Retry attempt 생성 방식 확인
+- 기존 테스트와 라우팅 확인
+
+Task 2. Sprint 4 타입 정의
+- PracticeSession
+- 확장 PracticeAttempt
+- AttemptComparison
+- MetricChange
+- TranscriptComparison
+- PracticeGoal
+- ProgressSummary
+- CategoryProgress
+
+Task 3. Storage schema와 마이그레이션
+- schemaVersion
+- Sprint 2 마이그레이션
+- Sprint 3 마이그레이션
+- 손상 데이터 복구
+- 기존 데이터 보존
+
+Task 4. Session과 Attempt 연결
+- 새 Session 생성
+- Retry 연결
+- attemptNumber
+- parentAttemptId
+- retryContext
+
+Task 5. Metric comparison 구현
+- 절대 변화
+- 변화율
+- 허용 오차
+- 해석
+- 예외 처리
+
+Task 6. Transcript comparison 구현
+- 문장 diff
+- 단어 diff
+- key term
+- similarity
+- 빈 입력 처리
+
+Task 7. Comparison UI
+- Attempt 선택
+- 주요 지표
+- 보조 지표
+- Transcript 비교
+- 체크리스트 적용 상태
+- 비교 요약
+
+Task 8. 개인 목표
+- 목표 생성
+- 수정
+- 유효성 검사
+- 진행률 계산
+- localStorage 저장
+
+Task 9. Progress analytics
+- 기간 필터
+- 요약 지표
+- 카테고리 집계
+- 추세
+- 연속일
+- 활동 데이터
+
+Task 10. 추천 엔진
+- 미연습 카테고리
+- 반복 개선 태그
+- Retry 없는 세션
+- 매우 짧은 답변
+- 최대 3개 추천
+
+Task 11. History 기능
+- 필터
+- 정렬
+- Session 목록
+- 상세 보기
+- 비교 이동
+- 다시 연습
+
+Task 12. 삭제와 초기화
+- Session 삭제
+- 연결 데이터 삭제
+- 전체 초기화
+- 확인 절차
+
+Task 13. 데이터 내보내기
+- JSON 생성
+- 민감 데이터 제외
+- 개인정보 안내
+- 브라우저 다운로드
+
+Task 14. 선택적 AI Retry Comparison
+- 기존 Provider 재사용
+- 명시적 버튼
+- schema 검증
+- 캐시
+- 한계 안내
+
+Task 15. 접근성과 모바일
+- 320px
+- 키보드
+- dialog
+- aria-live
+- 차트 대체 정보
+- 세로 비교 레이아웃
+
+Task 16. 테스트
+- 순수 함수
+- 마이그레이션
+- 비교
+- Progress
+- 추천
+- 삭제
+- 내보내기
+
+Task 17. 전체 회귀 테스트
+- Sprint 1
+- Sprint 2
+- Sprint 3
+- Sprint 4 end-to-end
+
+==================================================
+35. 인수 조건
+==================================================
+
+다음 조건을 모두 만족해야 Sprint 4 완료로 간주한다.
+
+AC-01:
+Sprint 1, 2, 3 기능이 유지된다.
+
+AC-02:
+첫 답변이 새로운 PracticeSession에 저장된다.
+
+AC-03:
+동일 질문 Retry가 같은 Session에 연결된다.
+
+AC-04:
+각 Attempt에 attemptNumber가 정확히 부여된다.
+
+AC-05:
+두 개 이상의 Attempt가 있으면 비교 화면을 열 수 있다.
+
+AC-06:
+Attempt 1과 최신 Attempt가 기본 비교된다.
+
+AC-07:
+사용자가 다른 Attempt 조합을 선택할 수 있다.
+
+AC-08:
+Recording Time 변화가 계산된다.
+
+AC-09:
+Total Words 변화가 계산된다.
+
+AC-10:
+WPM 변화가 계산된다.
+
+AC-11:
+Filler Rate 변화가 계산된다.
+
+AC-12:
+0으로 나누어 NaN 또는 Infinity가 표시되지 않는다.
+
+AC-13:
+모든 수치 변화가 자동으로 개선으로 표시되지 않는다.
+
+AC-14:
+Transcript의 추가, 삭제, 유지 내용이 표시된다.
+
+AC-15:
+Retry Checklist 적용 여부가 표시된다.
+
+AC-16:
+확실하지 않은 항목은 not-confirmed로 표시된다.
+
+AC-17:
+개선 영역과 계속 연습할 영역이 구분된다.
+
+AC-18:
+Progress 기간 필터가 작동한다.
+
+AC-19:
+총 답변, Session, Retry, 연습일이 정확히 집계된다.
+
+AC-20:
+연속 연습일이 로컬 날짜 기준으로 계산된다.
+
+AC-21:
+카테고리별 연습 현황이 표시된다.
+
+AC-22:
+연습 목표 생성과 수정이 가능하다.
+
+AC-23:
+목표 진행률이 정확히 계산된다.
+
+AC-24:
+기록 기반 추천이 최대 3개 표시된다.
+
+AC-25:
+추천 버튼으로 해당 연습을 시작할 수 있다.
+
+AC-26:
+History 필터와 정렬이 작동한다.
+
+AC-27:
+기록 상세에서 모든 Attempt를 확인할 수 있다.
+
+AC-28:
+개별 Session을 삭제할 수 있다.
+
+AC-29:
+Session 삭제 시 관련 Attempt만 삭제된다.
+
+AC-30:
+전체 초기화에 이중 확인 절차가 있다.
+
+AC-31:
+JSON 데이터 내보내기가 작동한다.
+
+AC-32:
+내보내기 데이터에 오디오와 API 키가 포함되지 않는다.
+
+AC-33:
+Sprint 2와 3의 기존 기록이 마이그레이션된다.
+
+AC-34:
+마이그레이션 시 기존 AI 코칭 결과가 보존된다.
+
+AC-35:
+AI가 없어도 로컬 비교와 Dashboard가 작동한다.
+
+AC-36:
+공식 SPA 점수나 등급이 표시되지 않는다.
+
+AC-37:
+발음과 억양 평가가 표시되지 않는다.
+
+AC-38:
+Progress가 브라우저 저장 기록 기반임을 안내한다.
+
+AC-39:
+모바일 320px에서 가로 스크롤이 발생하지 않는다.
+
+AC-40:
+npm run build가 성공한다.
+
+AC-41:
+npm run test가 성공한다.
+
+AC-42:
+TypeScript 오류와 심각한 콘솔 오류가 없다.
+
+==================================================
+36. README 업데이트
+==================================================
+
+README에 다음 내용을 추가한다.
+
+1. Sprint 4 개요
+2. PracticeSession과 Attempt 관계
+3. Attempt Comparison
+4. 비교 지표와 해석 기준
+5. Progress Dashboard
+6. 목표와 추천 로직
+7. 연속 연습일 계산 방식
+8. localStorage schema version
+9. 기존 데이터 마이그레이션
+10. 데이터 내보내기
+11. 데이터 삭제와 초기화
+12. AI Retry Comparison 설정
+13. 개인정보 안내
+14. 공식 SPA 평가가 아니라는 안내
+15. 테스트 방법
+16. 알려진 제한사항
+17. Sprint 5 추천 범위
+
+알려진 제한사항에 다음을 포함한다.
+
+- 오디오는 새로고침 후 유지되지 않을 수 있음
+- Transcript 수정이 비교 지표에 영향을 줄 수 있음
+- filler 탐지는 문맥을 완전히 이해하지 못함
+- lexical diversity는 답변 길이에 영향을 받음
+- AI 비교는 Transcript 기반이며 음성을 직접 평가하지 않음
+- 로그인과 클라우드 동기화가 없어 다른 기기에서 기록을 공유하지 못함
+- 브라우저 데이터를 삭제하면 기록이 사라질 수 있음
+
+==================================================
+37. 최종 검증
+==================================================
+
+구현 후 다음 명령을 실행한다.
+
+npm install
+npm run build
+npm run test
+
+프로젝트에 lint 명령이 있다면 다음도 실행한다.
+
+npm run lint
+
+오류가 발생하면 원인을 수정한 후 다시 검증한다.
+
+최종 응답에는 다음을 정리한다.
+
+1. 분석한 기존 프로젝트 구조
+2. 생성 또는 수정한 파일
+3. 구현한 기능
+4. 데이터 모델 변경사항
+5. 마이그레이션 방식
+6. 비교 계산 규칙
+7. Progress 계산 방식
+8. 추천 로직
+9. 테스트 결과
+10. 알려진 제한사항
+11. 구현하지 않은 기능
+12. Sprint 5 추천 기능
+
+설명만 제공하지 말고 실제 프로젝트 파일을 수정하여 작동하는 기능을 완성하라.
+
+Sprint 1, 2, 3 코드를 삭제하거나 새로운 프로젝트로 교체하지 말라.
+
+공식 SPA 점수, 발음 평가, 실시간 AI 면접관, 로그인, 결제 또는 Full Mock Test를 이번 Sprint에 추가하지 말라.
