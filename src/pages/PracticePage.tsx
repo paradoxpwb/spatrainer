@@ -162,35 +162,6 @@ export const PracticePage: React.FC<PracticePageProps> = ({
     prepTimer.start(settings.preparationDuration);
   };
 
-  // Watch for audio completion
-  useEffect(() => {
-    if (recordingState === 'completed' && audioUrl) {
-      onRecordingComplete({
-        audioBlob,
-        audioUrl,
-        actualDuration: actualDuration || elapsedRecordingTime || 1,
-        configuredDuration: settings.answerDuration,
-        listeningPlaybackCount: isListeningMode ? listeningPlaybackCount : undefined,
-      });
-    }
-  }, [
-    recordingState,
-    audioUrl,
-    audioBlob,
-    actualDuration,
-    elapsedRecordingTime,
-    settings.answerDuration,
-    isListeningMode,
-    listeningPlaybackCount,
-    onRecordingComplete,
-  ]);
-
-  // Handle user skipping preparation
-  const handleSkipPreparation = () => {
-    prepTimer.stop();
-    handleStartSpeaking();
-  };
-
   // Handle stopping recording (manual button or timeout)
   const handleFinishRecording = async () => {
     if (stage !== 'recording') return;
@@ -200,7 +171,26 @@ export const PracticePage: React.FC<PracticePageProps> = ({
       clearInterval(elapsedTimerRef.current);
       elapsedTimerRef.current = null;
     }
-    await stopRecording();
+    const result = await stopRecording();
+    if (result && result.blob && result.blob.size > 0) {
+      console.log('[SPA DEBUG] PracticePage recording completed successfully. Blob size:', result.blob.size);
+      onRecordingComplete({
+        audioBlob: result.blob,
+        audioUrl: result.url,
+        actualDuration: result.duration || elapsedRecordingTime || 1,
+        configuredDuration: settings.answerDuration,
+        listeningPlaybackCount: isListeningMode ? listeningPlaybackCount : undefined,
+      });
+    } else {
+      console.error('[SPA DEBUG] PracticePage recording produced invalid or empty Blob');
+      setStage('error');
+    }
+  };
+
+  // Handle user skipping preparation
+  const handleSkipPreparation = () => {
+    prepTimer.stop();
+    handleStartSpeaking();
   };
 
   const handleRetryAfterError = () => {
@@ -442,7 +432,8 @@ export const PracticePage: React.FC<PracticePageProps> = ({
           {stage === 'error' && (
             <div className="bg-white dark:bg-slate-900 border border-amber-200 rounded-2xl p-6 text-center shadow-xs">
               <ErrorMessage
-                message={recorderError || '마이크 접근에 실패했습니다. 브라우저 권한을 확인해 주세요.'}
+                title="녹음 실패 안내"
+                message={recorderError || '녹음 데이터를 생성하지 못했습니다. 마이크 권한을 확인하고 다시 녹음해 주세요.'}
               />
               <button
                 type="button"

@@ -158,9 +158,11 @@ export const AICoachingPanel: React.FC<AICoachingPanelProps> = ({
       {/* 3. Error Banner */}
       {error && !isLoading && (
         <ErrorMessage
+          title="AI Speaking Coach 안내"
           message={error.message}
           onRetry={onRequestCoaching}
           onGoBack={onClearError}
+          backLabel="안내 닫기"
         />
       )}
 

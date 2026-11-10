@@ -37,12 +37,14 @@ async function startServer() {
 
   // Top-level & API Health check endpoints
   const healthHandler = (_req: express.Request, res: express.Response) => {
+    const isGeminiConfigured = Boolean(SERVER_CONFIG.geminiApiKey || SERVER_CONFIG.aiApiKey);
     res.json({
-      status: 'ok',
-      service: 'spa-speaking-trainer-api',
-      provider: SERVER_CONFIG.provider,
-      model: SERVER_CONFIG.model,
-      hasApiKey: Boolean(SERVER_CONFIG.geminiApiKey),
+      server: 'ok',
+      geminiConfigured: isGeminiConfigured,
+      transcriptionReady: isGeminiConfigured,
+      coachingReady: isGeminiConfigured,
+      transcriptionModel: SERVER_CONFIG.model,
+      coachingModel: SERVER_CONFIG.aiModel,
     });
   };
   app.get('/health', healthHandler);
@@ -52,6 +54,11 @@ async function startServer() {
   app.use('/api', transcribeRoute);
   app.use('/api', coachRoute);
   app.use('/api', compareRoute);
+
+  // Google AdSense ads.txt route
+  app.get('/ads.txt', (_req, res) => {
+    res.type('text/plain').send('google.com, pub-3735195177138801, DIRECT, f08c47fec0942fa0\n');
+  });
 
   // Vite integration: Dev middleware in development, static files in production
   if (process.env.NODE_ENV === 'production') {

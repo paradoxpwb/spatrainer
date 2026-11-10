@@ -60,6 +60,8 @@ export async function requestCoaching(
       signal: controller.signal,
     });
 
+    console.log('[SPA DEBUG] /api/coach status:', response.status);
+
     clearTimeout(timer);
 
     let json: CoachingApiResponse;

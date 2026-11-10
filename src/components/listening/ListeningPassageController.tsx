@@ -27,6 +27,15 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isPlayingRef = useRef<boolean>(false);
 
+  const keepaliveTimerRef = useRef<number | null>(null);
+
+  const clearKeepalive = useCallback(() => {
+    if (keepaliveTimerRef.current !== null) {
+      window.clearInterval(keepaliveTimerRef.current);
+      keepaliveTimerRef.current = null;
+    }
+  }, []);
+
   // Check speech synthesis support and load voices
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -51,17 +60,25 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
+    if (typeof window.speechSynthesis.addEventListener === 'function') {
+      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    }
 
     return () => {
+      clearKeepalive();
+      if (typeof window.speechSynthesis.removeEventListener === 'function') {
+        window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+      }
       try {
         window.speechSynthesis.cancel();
       } catch {
         // ignore
       }
     };
-  }, []);
+  }, [clearKeepalive]);
 
   const stopPlayback = useCallback(() => {
+    clearKeepalive();
     try {
       window.speechSynthesis.cancel();
     } catch {
@@ -69,7 +86,7 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
     }
     setIsPlaying(false);
     isPlayingRef.current = false;
-  }, []);
+  }, [clearKeepalive]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -87,7 +104,7 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
       return;
     }
 
-    if (!('speechSynthesis' in window)) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setErrorMessage('음성 재생 기능을 사용할 수 없습니다.');
       return;
     }
@@ -97,7 +114,15 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
     isPlayingRef.current = true;
 
     try {
-      window.speechSynthesis.cancel();
+      // In Chromium, if speech synthesis is paused, resume first
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      // If active, cancel existing queue
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
 
       const utterance = new SpeechSynthesisUtterance(question.passage);
       utterance.lang = 'en-US';
@@ -113,9 +138,26 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
         utterance.voice = preferredVoice;
       }
 
+      utterance.onstart = () => {
+        // Chromium keepalive: SpeechSynthesis may halt after ~14s without periodic pause/resume
+        clearKeepalive();
+        keepaliveTimerRef.current = window.setInterval(() => {
+          try {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+              window.speechSynthesis.pause();
+              window.speechSynthesis.resume();
+            }
+          } catch {
+            // ignore
+          }
+        }, 10000);
+      };
+
       utterance.onend = () => {
+        clearKeepalive();
         setIsPlaying(false);
         isPlayingRef.current = false;
+        (window as unknown as { __spaActiveUtterance?: SpeechSynthesisUtterance | null }).__spaActiveUtterance = null;
         setPlaybackCount((prev) => {
           const next = prev + 1;
           if (onPlaybackCountChange) onPlaybackCountChange(next);
@@ -127,18 +169,22 @@ export const ListeningPassageController: React.FC<ListeningPassageControllerProp
       };
 
       utterance.onerror = (e) => {
-        console.warn('Speech synthesis error:', e);
+        clearKeepalive();
         setIsPlaying(false);
         isPlayingRef.current = false;
+        (window as unknown as { __spaActiveUtterance?: SpeechSynthesisUtterance | null }).__spaActiveUtterance = null;
         if (e.error !== 'canceled' && e.error !== 'interrupted') {
-          setErrorMessage('음성 재생 중 오류가 발생했습니다. 다시 시도해 주세요.');
+          setErrorMessage('지문 음성을 재생하지 못했습니다. 다시 듣기를 눌러 주세요.');
         }
       };
 
+      // Pin utterance globally to prevent V8 GC mid-speech
       utteranceRef.current = utterance;
+      (window as unknown as { __spaActiveUtterance?: SpeechSynthesisUtterance }).__spaActiveUtterance = utterance;
+
       window.speechSynthesis.speak(utterance);
     } catch (err) {
-      console.error('Failed to trigger speech synthesis:', err);
+      clearKeepalive();
       setIsPlaying(false);
       isPlayingRef.current = false;
       setErrorMessage('음성을 재생할 수 없습니다. 다시 시도해 주세요.');

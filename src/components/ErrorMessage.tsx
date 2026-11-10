@@ -2,15 +2,19 @@ import React from 'react';
 import { AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 interface ErrorMessageProps {
+  title?: string;
   message: string;
   onRetry?: () => void;
   onGoBack?: () => void;
+  backLabel?: string;
 }
 
 export const ErrorMessage: React.FC<ErrorMessageProps> = ({
+  title = '마이크 및 녹음 오류 안내',
   message,
   onRetry,
   onGoBack,
+  backLabel = '설정으로 돌아가기',
 }) => {
   return (
     <div
@@ -23,7 +27,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
         </div>
         <div className="flex-1">
           <h3 className="text-base font-bold text-red-950">
-            마이크 및 녹음 오류 안내
+            {title}
           </h3>
           <p className="mt-1.5 text-sm text-red-800 leading-relaxed font-normal">
             {message}
@@ -48,7 +52,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg focus-visible:outline-2 focus-visible:outline-slate-600 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-                <span>설정으로 돌아가기</span>
+                <span>{backLabel}</span>
               </button>
             )}
           </div>

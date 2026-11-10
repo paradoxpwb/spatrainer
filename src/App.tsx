@@ -34,6 +34,16 @@ import { ProgressPage } from './pages/ProgressPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SessionDetailPage } from './pages/SessionDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SpaGuidePage } from './pages/SpaGuidePage';
+import { MockExamPage } from './pages/MockExamPage';
+import { PrivacyPolicyModal } from './components/legal/PrivacyPolicyModal';
+import { TermsOfServiceModal } from './components/legal/TermsOfServiceModal';
+import { AboutModal } from './components/legal/AboutModal';
+import { useDDayOnboarding } from './hooks/useDDayOnboarding';
+import { useDailyUsageLimit } from './hooks/useDailyUsageLimit';
+import { DDayOnboardingModal } from './components/monetization/DDayOnboardingModal';
+import { PaywallModal } from './components/monetization/PaywallModal';
+import { PaywallSource } from './types/monetization';
 
 const COACHING_MODE_TO_RETRY_SOURCE: Record<RetryMode, RetrySource> = {
   'outline-only': 'coaching_mode_a',
@@ -43,6 +53,27 @@ const COACHING_MODE_TO_RETRY_SOURCE: Record<RetryMode, RetrySource> = {
 export default function App() {
   const [currentStep, setCurrentStep] = useState<AppStep>('home');
   const [settings, setSettings] = useState<PracticeSettings>(() => loadPracticeSettings());
+
+  // Monetization Sprint 1 Hooks & State
+  const dDay = useDDayOnboarding();
+  const dailyUsage = useDailyUsageLimit();
+  const [isDDayModalOpen, setIsDDayModalOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [paywallSource, setPaywallSource] = useState<PaywallSource>('home_hero_card');
+  const hasAutoPromptedOnboardingRef = useRef(false);
+
+  // Auto-prompt D-Day onboarding once on first visit to home if not completed
+  useEffect(() => {
+    if (currentStep === 'home' && !dDay.profile.onboardingCompleted && !hasAutoPromptedOnboardingRef.current) {
+      hasAutoPromptedOnboardingRef.current = true;
+      setIsDDayModalOpen(true);
+    }
+  }, [currentStep, dDay.profile.onboardingCompleted]);
+
+  // Legal & Info Modals
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   // Sprint 5: Unified PracticeSelection (Area & Topic dual axis) - avoids redundant loadPracticeSettings()
   const [practiceSelection, setPracticeSelection] = useState<PracticeSelection>(() => ({
@@ -255,8 +286,13 @@ export default function App() {
 
   const handleRecordingComplete = useCallback((data: RecordingResultData) => {
     cleanupAudioUrl();
-    activeAudioUrlRef.current = data.audioUrl;
-    setRecordingResult(data);
+    console.log('[SPA DEBUG] App state stored recordingResult, blob exists:', Boolean(data.audioBlob), 'size:', data.audioBlob?.size);
+    const validUrl = data.audioUrl || (data.audioBlob ? URL.createObjectURL(data.audioBlob) : null);
+    activeAudioUrlRef.current = validUrl;
+    setRecordingResult({
+      ...data,
+      audioUrl: validUrl,
+    });
     setCurrentStep('result');
   }, [cleanupAudioUrl]);
 
@@ -288,8 +324,17 @@ export default function App() {
 
       saveAttempt(enrichedAttempt);
       setLastSavedAttempt(enrichedAttempt);
+
+      // Sprint 1: Track daily free-usage (non-blocking)
+      if (enrichedAttempt.id) {
+        dailyUsage.recordPracticeAttempt(enrichedAttempt.id);
+      }
+      if (enrichedAttempt.aiCoaching?.status === 'completed') {
+        const coachingKey = enrichedAttempt.aiCoaching.transcriptHash || `${enrichedAttempt.id}-coaching`;
+        dailyUsage.recordAiFeedback(coachingKey);
+      }
     },
-    [saveAttempt, currentQuestion, recordingResult]
+    [saveAttempt, currentQuestion, recordingResult, dailyUsage]
   );
 
   // Direct Retry: same question, increment attempt number, link parent
@@ -485,6 +530,10 @@ export default function App() {
         onNavigateProgress={() => setCurrentStep('progress')}
         onNavigateHistory={() => setCurrentStep('history')}
         onNavigateSettings={() => setCurrentStep('settings')}
+        onNavigateGuide={() => setCurrentStep('guide')}
+        onNavigateMockExam={() => setCurrentStep('mock-exam')}
+        formattedDDay={dDay.formattedDDay}
+        onOpenOnboarding={() => setIsDDayModalOpen(true)}
       />
 
       {/* Floating Notice Toast */}
@@ -505,12 +554,27 @@ export default function App() {
             onStartPractice={handleStartPractice}
             onNavigateProgress={() => setCurrentStep('progress')}
             onNavigateHistory={() => setCurrentStep('history')}
+            onNavigateGuide={() => setCurrentStep('guide')}
+            onNavigateMockExam={() => setCurrentStep('mock-exam')}
             history={attempts}
             onClearHistory={handleResetAllData}
             onSelectAttempt={(attempt) => {
               if (attempt.sessionId) {
                 handleOpenSessionDetail(attempt.sessionId);
               }
+            }}
+            formattedDDay={dDay.formattedDDay}
+            targetLevel={dDay.profile.targetLevel}
+            dailyStudyMinutes={dDay.profile.dailyStudyMinutes}
+            recommendedArea={dDay.recommendedArea}
+            remainingPracticeCount={dailyUsage.remainingPracticeCount}
+            practiceLimit={dailyUsage.practiceLimit}
+            remainingAiFeedbackCount={dailyUsage.remainingAiFeedbackCount}
+            aiFeedbackLimit={dailyUsage.aiFeedbackLimit}
+            onOpenOnboarding={() => setIsDDayModalOpen(true)}
+            onOpenPaywall={(source) => {
+              setPaywallSource(source);
+              setIsPaywallOpen(true);
             }}
           />
         )}
@@ -595,6 +659,19 @@ export default function App() {
             }}
             onRetryQuestion={launchQuestionById}
             onGoHome={handleGoHome}
+            formattedDDay={dDay.formattedDDay}
+            targetLevel={dDay.profile.targetLevel}
+            dailyStudyMinutes={dDay.profile.dailyStudyMinutes}
+            recommendedArea={dDay.recommendedArea}
+            remainingPracticeCount={dailyUsage.remainingPracticeCount}
+            practiceLimit={dailyUsage.practiceLimit}
+            remainingAiFeedbackCount={dailyUsage.remainingAiFeedbackCount}
+            aiFeedbackLimit={dailyUsage.aiFeedbackLimit}
+            onOpenOnboarding={() => setIsDDayModalOpen(true)}
+            onOpenPaywall={(source) => {
+              setPaywallSource(source);
+              setIsPaywallOpen(true);
+            }}
           />
         )}
 
@@ -624,6 +701,19 @@ export default function App() {
           />
         )}
 
+        {currentStep === 'guide' && (
+          <SpaGuidePage
+            onStartPractice={handleStartPractice}
+            onGoHome={handleGoHome}
+          />
+        )}
+
+        {currentStep === 'mock-exam' && (
+          <MockExamPage
+            onGoHome={handleGoHome}
+          />
+        )}
+
         {currentStep === 'settings' && (
           <SettingsPage
             onBack={handleGoHome}
@@ -632,15 +722,85 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© SPA Speaking Trainer · 비공식 영어 말하기 실전 연습 서비스</p>
-          <p className="text-slate-400 dark:text-slate-500">
-            현대자동차그룹 비공식 훈련 도구 · 브라우저 로컬 저장
-          </p>
+      {/* Footer with AdSense & Legal Compliance */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-8 text-xs text-slate-500 dark:text-slate-400">
+        <div className="max-w-5xl mx-auto px-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <nav className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700 dark:text-slate-300" aria-label="Legal and guide navigation">
+              <button
+                type="button"
+                onClick={() => setIsAboutModalOpen(true)}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                서비스 소개
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('guide')}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                시험 가이드 & 루브릭
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('mock-exam')}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-bold text-indigo-600 dark:text-indigo-400"
+              >
+                실전 모의고사
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                개인정보처리방침
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsTermsModalOpen(true)}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                이용약관
+              </button>
+            </nav>
+            <div className="text-[11px] text-slate-400">
+              고객 및 제휴 문의: <span className="font-mono text-slate-600 dark:text-slate-300">support@spatrainer.app</span>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+            <p>© {new Date().getFullYear()} SPA Speaking Trainer. 비즈니스 영어 말하기 실전 자가 훈련 서비스.</p>
+            <p>Google AdSense 광고 및 쿠키 정책 준수 · 사용자 녹음 및 학습 데이터 브라우저 로컬 보관</p>
+          </div>
         </div>
       </footer>
+
+      {/* Legal & About Modals */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
+      <TermsOfServiceModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+      />
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+      />
+
+      {/* Monetization Sprint 1 Modals */}
+      <DDayOnboardingModal
+        isOpen={isDDayModalOpen}
+        onClose={() => setIsDDayModalOpen(false)}
+        initialProfile={dDay.profile}
+        onSaveProfile={dDay.updateProfile}
+      />
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        source={paywallSource}
+        formattedDDay={dDay.formattedDDay}
+      />
     </div>
   );
 }

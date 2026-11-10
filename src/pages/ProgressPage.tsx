@@ -18,6 +18,11 @@ import { RecommendationList } from '../components/progress/RecommendationList';
 import { Play, ShieldAlert } from 'lucide-react';
 import { PracticeRecommendation } from '../types/progress';
 
+import { TargetSpaLevel, DailyStudyMinutes, PaywallSource } from '../types/monetization';
+import { PracticeAreaDefinition } from '../types/question';
+import { DailyLimitBadge } from '../components/monetization/DailyLimitBadge';
+import { Calendar, Sparkles, Clock, Compass } from 'lucide-react';
+
 interface ProgressPageProps {
   attempts: PracticeAttempt[];
   sessions: PracticeSession[];
@@ -27,6 +32,16 @@ interface ProgressPageProps {
   onSelectCategoryPractice: (categoryId: string) => void;
   onRetryQuestion: (questionId: string) => void;
   onGoHome: () => void;
+  formattedDDay?: string;
+  targetLevel?: TargetSpaLevel;
+  dailyStudyMinutes?: DailyStudyMinutes;
+  recommendedArea?: PracticeAreaDefinition;
+  remainingPracticeCount?: number;
+  practiceLimit?: number;
+  remainingAiFeedbackCount?: number;
+  aiFeedbackLimit?: number;
+  onOpenOnboarding?: () => void;
+  onOpenPaywall?: (source: PaywallSource) => void;
 }
 
 export const ProgressPage: React.FC<ProgressPageProps> = ({
@@ -38,6 +53,16 @@ export const ProgressPage: React.FC<ProgressPageProps> = ({
   onSelectCategoryPractice,
   onRetryQuestion,
   onGoHome,
+  formattedDDay,
+  targetLevel,
+  dailyStudyMinutes,
+  recommendedArea,
+  remainingPracticeCount = 3,
+  practiceLimit = 3,
+  remainingAiFeedbackCount = 1,
+  aiFeedbackLimit = 1,
+  onOpenOnboarding,
+  onOpenPaywall,
 }) => {
   const {
     periodFilter,
@@ -83,6 +108,70 @@ export const ProgressPage: React.FC<ProgressPageProps> = ({
           <Play className="w-4 h-4 fill-current" aria-hidden="true" />
           <span>새 질문 연습하기</span>
         </button>
+      </div>
+
+      {/* Sprint 1: D-Day & Target Level Status Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600 text-white text-xs font-extrabold rounded-full">
+                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{formattedDDay || '시험일 설정'}</span>
+              </span>
+              {targetLevel && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-lg border border-indigo-200/60 dark:border-indigo-800">
+                  <Sparkles className="w-3 h-3 text-indigo-500" aria-hidden="true" />
+                  <span>
+                    목표 SPA:{' '}
+                    {targetLevel === 'level-3'
+                      ? 'Level 3'
+                      : targetLevel === 'level-4'
+                      ? 'Level 4'
+                      : targetLevel === 'level-5'
+                      ? 'Level 5'
+                      : targetLevel === 'level-6-plus'
+                      ? 'Level 6+'
+                      : '미정'}
+                  </span>
+                </span>
+              )}
+              {dailyStudyMinutes && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-lg">
+                  <Clock className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                  <span>일일 목표 {dailyStudyMinutes}분</span>
+                </span>
+              )}
+              {onOpenOnboarding && (
+                <button
+                  type="button"
+                  onClick={onOpenOnboarding}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium underline underline-offset-2 ml-1"
+                >
+                  수정
+                </button>
+              )}
+            </div>
+
+            {recommendedArea && (
+              <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" aria-hidden="true" />
+                <span>추천 영역: <strong>{recommendedArea.labelKo}</strong></span>
+              </p>
+            )}
+          </div>
+
+          <div className="shrink-0 flex items-center gap-3">
+            <DailyLimitBadge
+              remainingPracticeCount={remainingPracticeCount}
+              practiceLimit={practiceLimit}
+              remainingAiFeedbackCount={remainingAiFeedbackCount}
+              aiFeedbackLimit={aiFeedbackLimit}
+              variant="compact"
+              onUpgradeClick={onOpenPaywall ? () => onOpenPaywall('progress_limit_badge') : undefined}
+            />
+          </div>
+        </div>
       </div>
 
       {/* 2. Top Recommendations Banner (if any) */}

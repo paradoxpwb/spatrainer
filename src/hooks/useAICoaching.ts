@@ -178,6 +178,9 @@ export function useAICoaching(): UseAICoachingReturn {
         setError(null);
         setStatus('requesting');
 
+        console.log('[SPA DEBUG] coaching requested');
+        console.log('[SPA DEBUG] transcript available: YES');
+
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
@@ -202,6 +205,7 @@ export function useAICoaching(): UseAICoachingReturn {
           timeoutMs: 45000,
         });
 
+        console.log('[SPA DEBUG] coaching response validated: YES');
         setResult(response.result);
         setIsCached(response.isCached);
         setIsStale(false);
@@ -219,10 +223,15 @@ export function useAICoaching(): UseAICoachingReturn {
           return null;
         }
 
+        console.log('[SPA DEBUG] coaching response validated: NO');
         const errorCode: CoachingErrorCode =
           err instanceof CoachingServiceError ? err.code : 'COACHING_FAILED';
-        const errorMessage =
-          err.message || 'AI 코칭 결과를 생성하지 못했습니다. 다시 시도해 주세요.';
+        let errorMessage =
+          err.message || '답변 내용은 저장되었지만 AI 분석을 완료하지 못했습니다.';
+
+        if (errorCode === 'CONFIGURATION_ERROR') {
+          errorMessage = '현재 AI 분석 서버 설정이 완료되지 않아 AI 코칭을 사용할 수 없습니다.';
+        }
 
         setError({ code: errorCode, message: errorMessage });
         setStatus('failed');

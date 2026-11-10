@@ -12,7 +12,7 @@ export const SERVER_CONFIG = {
   // Sprint 3 AI Coaching Configuration
   aiProvider: process.env.AI_PROVIDER || 'gemini',
   aiApiKey: process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '',
-  aiModel: process.env.AI_MODEL || 'gemini-3.8-flash',
+  aiModel: process.env.AI_MODEL || 'gemini-3.1-flash-lite',
   aiTimeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '45000', 10),
   aiMaxOutputTokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS || '2500', 10),
   coachingPromptVersion: process.env.COACHING_PROMPT_VERSION || 'v1',

@@ -76,6 +76,23 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   const [speakingMetrics, setSpeakingMetrics] = useState<SpeakingMetrics | null>(null);
   const [isManualInputMode, setIsManualInputMode] = useState<boolean>(false);
   const [manualInputDraft, setManualInputDraft] = useState<string>('');
+  const [presentationAudioUrl, setPresentationAudioUrl] = useState<string | null>(null);
+
+  // Manage presentation audio Object URL lifecycle from the source-of-truth audioBlob
+  useEffect(() => {
+    if (resultData.audioBlob && resultData.audioBlob.size > 0) {
+      const url = URL.createObjectURL(resultData.audioBlob);
+      console.log('[SPA DEBUG] ResultPage created presentation URL, blob size:', resultData.audioBlob.size);
+      setPresentationAudioUrl(url);
+
+      return () => {
+        console.log('[SPA DEBUG] ResultPage revoking presentation URL');
+        URL.revokeObjectURL(url);
+      };
+    } else if (resultData.audioUrl) {
+      setPresentationAudioUrl(resultData.audioUrl);
+    }
+  }, [resultData.audioBlob, resultData.audioUrl]);
 
   const actualDurationFormatted = formatTime(resultData.actualDuration);
   const targetDurationFormatted = formatTime(resultData.configuredDuration);
@@ -83,6 +100,9 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   const questionPrompt = getDisplayPrompt(question);
   const questionCategory = question.category || question.topic || 'general';
   const questionCategoryLabel = question.categoryLabel || getTopicLabel(question.topic);
+
+  const initialAttemptSavedRef = useRef<boolean>(false);
+  const autoTranscribeTriggeredRef = useRef<boolean>(false);
 
   // Trigger server-side transcription
   const handleStartAnalysis = useCallback(async () => {
@@ -121,8 +141,69 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           transcriptionStatus: 'completed',
         });
       }
+    } else {
+      // If transcription failed or was rejected, ensure the practice attempt is not lost
+      if (onSaveAttempt) {
+        onSaveAttempt({
+          id: attemptIdRef.current,
+          sessionId,
+          attemptNumber,
+          parentAttemptId: parentAttemptId || undefined,
+          retrySource: retrySource || undefined,
+          retryContext: retryContext || undefined,
+          questionId: question.id,
+          category: questionCategory,
+          categoryLabel: questionCategoryLabel,
+          question: questionPrompt,
+          practiceArea: question.practiceArea,
+          topic: question.topic,
+          practiceMode: question.practiceMode,
+          recordedAt: new Date().toISOString(),
+          recordingDurationSeconds: resultData.actualDuration,
+          originalTranscript: '',
+          editedTranscript: '',
+          metrics: null as any,
+          transcriptionStatus: 'failed',
+        });
+      }
     }
   }, [resultData, isTranscribing, transcribe, question.id, question.practiceArea, question.topic, question.practiceMode, questionCategory, questionCategoryLabel, questionPrompt, onSaveAttempt, sessionId, attemptNumber, parentAttemptId, retrySource, retryContext]);
+
+  // Ensure practice attempt is saved immediately upon reaching ResultPage so user practice is never lost
+  useEffect(() => {
+    if (!initialAttemptSavedRef.current && onSaveAttempt) {
+      initialAttemptSavedRef.current = true;
+      onSaveAttempt({
+        id: attemptIdRef.current,
+        sessionId,
+        attemptNumber,
+        parentAttemptId: parentAttemptId || undefined,
+        retrySource: retrySource || undefined,
+        retryContext: retryContext || undefined,
+        questionId: question.id,
+        category: questionCategory,
+        categoryLabel: questionCategoryLabel,
+        question: questionPrompt,
+        practiceArea: question.practiceArea,
+        topic: question.topic,
+        practiceMode: question.practiceMode,
+        recordedAt: new Date().toISOString(),
+        recordingDurationSeconds: resultData.actualDuration,
+        originalTranscript: '',
+        editedTranscript: '',
+        metrics: null as any,
+        transcriptionStatus: 'processing',
+      });
+    }
+  }, [onSaveAttempt, sessionId, attemptNumber, parentAttemptId, retrySource, retryContext, question.id, questionCategory, questionCategoryLabel, questionPrompt, question.practiceArea, question.topic, question.practiceMode, resultData.actualDuration]);
+
+  // Auto-initiate transcription upon entering result screen if audioBlob exists and not yet analyzed
+  useEffect(() => {
+    if (!autoTranscribeTriggeredRef.current && resultData.audioBlob && transcriptionStatus === 'idle') {
+      autoTranscribeTriggeredRef.current = true;
+      handleStartAnalysis();
+    }
+  }, [resultData.audioBlob, transcriptionStatus, handleStartAnalysis]);
 
   // Handle user updating the transcript
   const handleUpdateTranscript = (newText: string) => {
@@ -359,9 +440,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       </div>
 
       {/* 3. HTML Audio Player */}
-      {resultData.audioUrl && (
+      {presentationAudioUrl && (
         <div className="mb-6">
-          <AudioPlayer src={resultData.audioUrl} />
+          <AudioPlayer
+            src={presentationAudioUrl}
+            blob={resultData.audioBlob}
+            fallbackDuration={resultData.actualDuration}
+          />
         </div>
       )}
 
@@ -423,12 +508,27 @@ export const ResultPage: React.FC<ResultPageProps> = ({
 
       {/* Error state */}
       {transcriptionError && !isTranscribing && !isManualInputMode && (
-        <div className="mb-8">
+        <div className="mb-8 space-y-4">
           <ErrorMessage
+            title="음성 변환에 실패했습니다."
             message={transcriptionError.message}
             onRetry={handleStartAnalysis}
             onGoBack={handleOpenManualInput}
+            backLabel="Transcript 직접 입력"
           />
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <span className="text-slate-600">
+              음성 인식이 어려운 경우에도, 직접 입력한 텍스트로 말하기 지표(WPM, 어휘, 필러)를 즉시 분석하고 기록할 수 있습니다.
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenManualInput}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shrink-0 transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>직접 입력 시작</span>
+            </button>
+          </div>
         </div>
       )}
 

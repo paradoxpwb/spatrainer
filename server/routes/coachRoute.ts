@@ -19,7 +19,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 router.post('/coach', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('[SPA DEBUG] /api/coach received request');
     const coachingResult = await coachingService.processCoachingRequest(req.body);
+    console.log('[SPA DEBUG] /api/coach successfully generated coaching result');
 
     res.status(200).json({
       success: true,

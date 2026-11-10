@@ -52,6 +52,8 @@ export async function transcribeAudioBlob(
       signal: controller.signal,
     });
 
+    console.log('[SPA DEBUG] transcription HTTP status:', response.status);
+
     clearTimeout(timeoutTimer);
 
     let json: TranscriptionApiResponse;

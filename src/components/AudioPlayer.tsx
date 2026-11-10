@@ -4,23 +4,35 @@ import { formatTime } from '../utils/timeUtils';
 
 interface AudioPlayerProps {
   src: string;
+  blob?: Blob | null;
+  fallbackDuration?: number;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, blob, fallbackDuration = 0 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(fallbackDuration || 0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    setPlaybackError(null);
+
     const handleLoadedMetadata = () => {
-      if (Number.isFinite(audio.duration)) {
+      console.log('[SPA DEBUG] AudioPlayer onLoadedMetadata fired, raw duration:', audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
+      } else if (fallbackDuration && fallbackDuration > 0) {
+        setDuration(fallbackDuration);
       }
+    };
+
+    const handleCanPlay = () => {
+      console.log('[SPA DEBUG] AudioPlayer onCanPlay fired');
     };
 
     const handleTimeUpdate = () => {
@@ -35,20 +47,37 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
 
+    const handleError = () => {
+      const code = audio.error ? audio.error.code : 'UNKNOWN';
+      console.error(
+        '[SPA DEBUG] Audio playback failed. Blob size:',
+        blob?.size,
+        'MIME:',
+        blob?.type,
+        'MediaError code:',
+        code
+      );
+      setPlaybackError('녹음 파일을 재생하지 못했습니다. 다시 녹음해 주세요.');
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('error', handleError);
     };
-  }, [src]);
+  }, [src, blob, fallbackDuration]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -58,7 +87,15 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       audio.pause();
     } else {
       audio.play().catch((err) => {
-        console.warn('Audio playback error:', err);
+        console.error(
+          '[SPA DEBUG] Audio play() promise rejected:',
+          err,
+          'Blob size:',
+          blob?.size,
+          'MIME:',
+          blob?.type
+        );
+        setPlaybackError('녹음 파일을 재생하지 못했습니다. 다시 녹음해 주세요.');
       });
     }
   };
@@ -116,6 +153,13 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 focus-visible:outline-2 focus-visible:outline-blue-400"
           />
         </div>
+
+        {/* Error message banner */}
+        {playbackError && (
+          <div role="alert" className="p-3 bg-red-950/80 border border-red-500/50 rounded-xl text-red-200 text-xs">
+            {playbackError}
+          </div>
+        )}
 
         {/* Controls row */}
         <div className="flex items-center justify-between pt-2">

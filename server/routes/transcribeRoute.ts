@@ -97,6 +97,7 @@ router.post('/transcribe', (req: Request, res: Response): void => {
 
     // 5. Call Transcription Adapter
     try {
+      console.log('[SPA DEBUG] /api/transcribe received audio bytes:', file.buffer.length, 'MIME:', rawMime);
       const adapter = getTranscriptionAdapter();
       const language = req.body.language || 'en';
 
@@ -104,6 +105,8 @@ router.post('/transcribe', (req: Request, res: Response): void => {
         language,
         timeoutMs: SERVER_CONFIG.timeoutMs,
       });
+
+      console.log('[SPA DEBUG] /api/transcribe completed successfully, transcript length:', transcript.length);
 
       res.status(200).json({
         success: true,

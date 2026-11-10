@@ -28,7 +28,53 @@ Strict Boundaries & Negative Constraints:
 - The improved answer must remain faithful to the speaker's original ideas, tailored to the target level requested (current, one-step-better, or challenging), and be realistically speakable within the user's configured answer time limit.
 ${languageInstructions}
 
-Return ONLY valid JSON matching the required schema without any markdown code fences, headers, or conversational wrapper text.`;
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "version": "v1",
+  "feedbackLanguage": "${language}",
+  "desiredAnswerLevel": "one-step-better",
+  "overallSummary": "1-2 sentence overall coaching summary in ${language === 'ko' ? 'Korean' : 'English'}",
+  "relevance": {
+    "rating": "effective", // 'needs-development' | 'developing' | 'effective' | 'strong'
+    "explanation": "explanation in ${language === 'ko' ? 'Korean' : 'English'}",
+    "answeredMainQuestion": true,
+    "missingElements": [],
+    "evidence": [{"quotedText": "quoted English from transcript", "explanation": "explanation"}]
+  },
+  "structure": {
+    "rating": "effective", // 'needs-development' | 'developing' | 'effective' | 'strong'
+    "explanation": "explanation in ${language === 'ko' ? 'Korean' : 'English'}",
+    "hasOpening": true,
+    "hasSupportingDetails": true,
+    "hasExample": false,
+    "hasConclusion": false,
+    "evidence": []
+  },
+  "strengths": [
+    {"title": "strength title", "explanation": "explanation", "evidence": "quoted English"}
+  ],
+  "priorityImprovements": [
+    {"priority": 1, "title": "improvement title", "explanation": "explanation", "action": "actionable step", "evidence": "quoted English"}
+  ],
+  "grammarCorrections": [
+    {"original": "mistake in English", "corrected": "corrected English", "explanation": "explanation", "category": "article"}
+  ],
+  "expressionImprovements": [
+    {"original": "naturalness improvement original", "improved": "more natural expression", "explanation": "explanation"}
+  ],
+  "answerOutline": [
+    {"order": 1, "label": "Opening", "guidance": "guidance", "exampleStarter": "In my opinion, ..."}
+  ],
+  "improvedAnswer": "Complete natural model answer in English faithful to speaker context.",
+  "usefulExpressions": ["expression 1", "expression 2"],
+  "retryChecklist": [
+    {"id": "check-1", "instruction": "instruction 1"},
+    {"id": "check-2", "instruction": "instruction 2"},
+    {"id": "check-3", "instruction": "instruction 3"}
+  ],
+  "limitations": ["text-based coaching limitation notice"]
+}
+Do NOT use markdown code blocks (\`\`\`). Return raw JSON only.`;
 }
 
 export function buildUserPrompt(req: CoachingRequestInput): string {

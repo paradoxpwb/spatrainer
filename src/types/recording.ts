@@ -18,7 +18,16 @@ export type AppStep =
   | 'progress'
   | 'history'
   | 'session-detail'
-  | 'settings';
+  | 'settings'
+  | 'guide'
+  | 'mock-exam';
+
+export interface CompletedRecording {
+  blob: Blob;
+  url: string;
+  mimeType: string;
+  duration: number;
+}
 
 export interface RecordingResultData {
   audioBlob: Blob | null;

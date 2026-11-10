@@ -73,6 +73,7 @@ export class GeminiCoachingProvider implements AiProvider {
         throw authErr;
       }
 
+      console.error('[SPA DEBUG] AI coaching provider call failed:', err?.status, err?.message || err);
       const failErr = new Error('AI coaching provider request failed.');
       (failErr as any).code = 'COACHING_FAILED';
       throw failErr;

@@ -87,6 +87,9 @@ export function useTranscription(): UseTranscriptionReturn {
         setError(null);
         setStatus('uploading');
 
+        console.log('[SPA DEBUG] transcription request started');
+        console.log('[SPA DEBUG] transcription audio bytes:', audioBlob.size);
+
         // Cancel any pending request
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
@@ -105,6 +108,20 @@ export function useTranscription(): UseTranscriptionReturn {
 
         const transcriptText = transcription.transcript ? transcription.transcript.trim() : '';
 
+        if (!transcriptText) {
+          console.log('[SPA DEBUG] transcript returned: NO');
+          const errObj = {
+            code: 'TRANSCRIPTION_FAILED' as TranscriptionErrorCode,
+            message: '녹음은 완료되었지만 음성을 텍스트로 변환하지 못했습니다.',
+          };
+          setError(errObj);
+          setStatus('failed');
+          isRequestingRef.current = false;
+          abortControllerRef.current = null;
+          return null;
+        }
+
+        console.log('[SPA DEBUG] transcript returned: YES');
         setResult(transcription);
         setStatus('completed');
         isRequestingRef.current = false;
@@ -123,8 +140,9 @@ export function useTranscription(): UseTranscriptionReturn {
         const errorCode: TranscriptionErrorCode =
           err instanceof TranscriptionServiceError ? err.code : 'TRANSCRIPTION_FAILED';
         const errorMessage =
-          err.message || '음성을 정확하게 변환하지 못했습니다. 다시 시도하거나 답변 내용을 직접 입력해 주세요.';
+          err.message || '녹음은 완료되었지만 음성을 텍스트로 변환하지 못했습니다.';
 
+        console.log('[SPA DEBUG] transcript returned: NO');
         setError({ code: errorCode, message: errorMessage });
         setStatus('failed');
         return null;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RecordingState } from '../types/recording';
+import { CompletedRecording, RecordingState } from '../types/recording';
 
 export interface UseAudioRecorderReturn {
   recordingState: RecordingState;
@@ -8,7 +8,7 @@ export interface UseAudioRecorderReturn {
   actualDuration: number;
   errorMessage: string | null;
   startRecording: () => Promise<boolean>;
-  stopRecording: () => Promise<void>;
+  stopRecording: () => Promise<CompletedRecording | null>;
   cancelRecording: () => void;
   resetRecording: () => void;
   clearError: () => void;
@@ -28,6 +28,8 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const activeUrlRef = useRef<string | null>(null);
   const isStoppingRef = useRef<boolean>(false);
   const isStartingRef = useRef<boolean>(false);
+  const isCompletedRef = useRef<boolean>(false);
+  const stopResolverRef = useRef<((val: CompletedRecording | null) => void) | null>(null);
 
   // Helper: Stop all active tracks on the stream
   const releaseMediaStream = useCallback(() => {
@@ -90,6 +92,9 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     startTimeRef.current = null;
     isStoppingRef.current = false;
     isStartingRef.current = false;
+    isCompletedRef.current = false;
+    stopResolverRef.current?.(null);
+    stopResolverRef.current = null;
     setAudioBlob(null);
     setAudioUrl(null);
     setActualDuration(0);
@@ -107,6 +112,8 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         // ignore
       }
     }
+    stopResolverRef.current?.(null);
+    stopResolverRef.current = null;
     releaseMediaStream();
     resetRecording();
   }, [releaseMediaStream, resetRecording]);
@@ -151,6 +158,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         },
       });
 
+      console.log('[SPA DEBUG] microphone permission granted');
       mediaStreamRef.current = stream;
 
       const mimeType = getSupportedMimeType();
@@ -158,9 +166,13 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       const recorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = recorder;
 
+      const selectedType = recorder.mimeType || mimeType || 'audio/webm';
+      console.log('[SPA DEBUG] MIME type:', selectedType);
+
       recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
+          console.log('[SPA DEBUG] dataavailable size:', event.data.size);
         }
       };
 
@@ -170,9 +182,13 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         setRecordingState('error');
         releaseMediaStream();
         isStartingRef.current = false;
+        isStoppingRef.current = false;
+        stopResolverRef.current?.(null);
+        stopResolverRef.current = null;
       };
 
       recorder.onstop = () => {
+        console.log('[SPA DEBUG] recorder stopped');
         const recordedDuration = startTimeRef.current
           ? Math.max(1, Math.round((performance.now() - startTimeRef.current) / 1000))
           : 0;
@@ -180,33 +196,53 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         setActualDuration(recordedDuration);
         releaseMediaStream();
 
-        const selectedType = recorder.mimeType || mimeType || 'audio/webm';
-        const finalBlob = new Blob(chunksRef.current, { type: selectedType });
+        const activeMime = recorder.mimeType || mimeType || 'audio/webm';
+        const finalBlob = new Blob(chunksRef.current, { type: activeMime });
+
+        console.log('[SPA DEBUG] final Blob size:', finalBlob.size);
+        console.log('[SPA DEBUG] final Blob type:', activeMime);
 
         if (finalBlob.size === 0) {
-          setErrorMessage('녹음된 오디오 데이터가 없습니다. 마이크 입력을 확인한 후 다시 시도해 주세요.');
+          console.error('[SPA DEBUG] final Blob size is 0');
+          setErrorMessage('녹음 데이터를 생성하지 못했습니다. 마이크 권한을 확인하고 다시 녹음해 주세요.');
           setRecordingState('error');
           isStoppingRef.current = false;
+          stopResolverRef.current?.(null);
+          stopResolverRef.current = null;
           return;
         }
 
         const newUrl = URL.createObjectURL(finalBlob);
+        console.log('[SPA DEBUG] object URL created');
         activeUrlRef.current = newUrl;
+        isCompletedRef.current = true;
         setAudioBlob(finalBlob);
         setAudioUrl(newUrl);
         setRecordingState('completed');
         isStoppingRef.current = false;
+
+        const result: CompletedRecording = {
+          blob: finalBlob,
+          url: newUrl,
+          mimeType: activeMime,
+          duration: recordedDuration,
+        };
+        stopResolverRef.current?.(result);
+        stopResolverRef.current = null;
       };
 
       // Start recording with timeslice to ensure data chunks are gathered periodically
       recorder.start(250);
       startTimeRef.current = performance.now();
+      console.log('[SPA DEBUG] recorder state: recording');
       setRecordingState('recording');
       isStartingRef.current = false;
       return true;
     } catch (err: unknown) {
       isStartingRef.current = false;
       releaseMediaStream();
+      stopResolverRef.current?.(null);
+      stopResolverRef.current = null;
 
       const error = err as { name?: string; message?: string };
       if (
@@ -240,42 +276,54 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
   }, [getSupportedMimeType, releaseMediaStream, revokeActiveUrl]);
 
-  const stopRecording = useCallback(async (): Promise<void> => {
-    if (isStoppingRef.current) return;
+  const stopRecording = useCallback((): Promise<CompletedRecording | null> => {
+    if (isStoppingRef.current) return Promise.resolve(null);
 
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
       releaseMediaStream();
-      return;
+      return Promise.resolve(null);
     }
 
-    try {
+    return new Promise<CompletedRecording | null>((resolve) => {
+      stopResolverRef.current = resolve;
       isStoppingRef.current = true;
       setRecordingState('processing');
 
       // Request data before stopping
       try {
-        if (mediaRecorderRef.current.state === 'recording') {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.requestData();
         }
       } catch {
         // ignore
       }
 
-      mediaRecorderRef.current.stop();
-    } catch (err) {
-      console.error('Error stopping recorder:', err);
-      releaseMediaStream();
-      isStoppingRef.current = false;
-      setRecordingState('error');
-      setErrorMessage('녹음을 종료하는 도중 오류가 발생했습니다.');
-    }
+      try {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        } else {
+          resolve(null);
+        }
+      } catch (err) {
+        console.error('Error stopping recorder:', err);
+        releaseMediaStream();
+        isStoppingRef.current = false;
+        setRecordingState('error');
+        setErrorMessage('녹음을 종료하는 도중 오류가 발생했습니다.');
+        resolve(null);
+      }
+    });
   }, [releaseMediaStream]);
 
   // Clean up on component unmount
   useEffect(() => {
     return () => {
       releaseMediaStream();
-      revokeActiveUrl();
+      // Only revoke active URL on unmount if recording was never completed or was cancelled.
+      // When completed, the caller (e.g. ResultPage via App) takes over audioUrl lifecycle.
+      if (!isCompletedRef.current) {
+        revokeActiveUrl();
+      }
     };
   }, [releaseMediaStream, revokeActiveUrl]);
 
